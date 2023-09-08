@@ -1,0 +1,21 @@
+#ifndef HOT_RELOAD_OPENGL_PLATFORM_H
+#define HOT_RELOAD_OPENGL_PLATFORM_H
+
+#define WGL_CONTEXT_MAJOR_VERSION_ARB 0x2091
+#define WGL_CONTEXT_MINOR_VERSION_ARB 0x2092
+#define WGL_CONTEXT_FLAGS_ARB 0x2094
+#define WGL_CONTEXT_CORE_PROFILE_BIT_ARB 0x00000001
+#define WGL_CONTEXT_PROFILE_MASK_ARB 0x9126
+
+#include <glad/gl.h>
+
+struct gl {
+    PFNGLVIEWPORTPROC viewport;
+    PFNGLCLEARCOLORPROC clear_color;
+    PFNGLCLEARPROC clear;
+    PFNGLENABLEPROC enable;
+};
+
+typedef void (__cdecl *update_and_render_type)(void *, gl*);
+
+#endif //HOT_RELOAD_OPENGL_PLATFORM_H

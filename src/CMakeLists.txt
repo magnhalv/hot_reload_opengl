@@ -4,6 +4,10 @@ project(Application)
 
 add_library(Application SHARED application.cpp)
 
+include_directories(../deps/glad/include)
+
+target_link_libraries(Application)
+
 set_target_properties(Application PROPERTIES
         RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/
         LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/

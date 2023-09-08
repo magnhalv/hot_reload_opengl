@@ -1,27 +1,19 @@
 #include <Windows.h>
 #include <cstdio>
 
+#include <glad/gl.h>
+#include <glad/wgl.h>
+
+#include "platform.h"
 #include "src/types.h"
-#include "src/application.h"
 
-static bool is_running = true;
 
-typedef void (__cdecl *update_and_render_type)(void *);
 
 struct AppFunctions {
     HMODULE handle = nullptr;
     update_and_render_type update_and_render = nullptr;
     FILETIME last_loaded_dll_write_time = {0, 0};
 };
-
-void win32_print_file_times(FILETIME first, FILETIME second) {
-    SYSTEMTIME systemTime;
-    FileTimeToSystemTime(&first, &systemTime);
-    printf("%d:%d:%d", systemTime.wHour, systemTime.wMinute, systemTime.wSecond);
-
-    FileTimeToSystemTime(&second, &systemTime);
-    printf("- %d:%d:%d\n", systemTime.wHour, systemTime.wMinute, systemTime.wSecond);
-}
 
 bool win32_should_reload_dll(AppFunctions *app_functions) {
     if (app_functions->update_and_render == nullptr) {
@@ -31,17 +23,13 @@ bool win32_should_reload_dll(AppFunctions *app_functions) {
     LPCTSTR path = "Application.dll";
     WIN32_FILE_ATTRIBUTE_DATA file_info;
     if (GetFileAttributesEx(path, GetFileExInfoStandard, &file_info)) {
-        //win32_print_file_times(file_info.ftLastWriteTime, app_functions->last_loaded_dll_write_time);
         auto result = CompareFileTime(&file_info.ftLastWriteTime, &app_functions->last_loaded_dll_write_time);
-        //printf("ftLatWriteTime - last_loaded_time %ld\n", result);
         return result > 0;
     }
     else {
         printf("Unable to open read time of '%s'.\n", path);
         return false;
     }
-
-
 }
 
 void win32_copy_dll() {
@@ -57,7 +45,6 @@ void win32_copy_dll() {
 }
 
 void win32_load_dll(AppFunctions *functions) {
-    printf("win32_load_dll\n");
     if (functions->handle != nullptr) {
         FreeLibrary(functions->handle);
         functions->handle = nullptr;
@@ -93,7 +80,7 @@ void win32_load_dll(AppFunctions *functions) {
     }
 }
 
-void win32_process_pending_messages(HWND hwnd) {
+void win32_process_pending_messages(HWND hwnd, bool &is_running) {
     MSG message;
     while (PeekMessage(&message, hwnd, 0, 0, PM_REMOVE)) {
         switch (message.message) {
@@ -132,18 +119,6 @@ void win32_process_pending_messages(HWND hwnd) {
 }
 
 LRESULT CALLBACK WndProc(HWND hwnd, UINT iMsg, WPARAM wParam, LPARAM lParam) {
-    switch (iMsg) {
-        case WM_CLOSE:
-        case WM_DESTROY: {
-            is_running = false;
-        }
-            break;
-        case WM_PAINT:
-        case WM_ERASEBKGND:
-        default:
-            return DefWindowProc(hwnd, iMsg, wParam, lParam);
-    }
-
     return DefWindowProc(hwnd, iMsg, wParam, lParam);
 }
 
@@ -191,22 +166,111 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR szCmdLine,
                                windowRect.right - windowRect.left, windowRect.bottom - windowRect.top, nullptr, nullptr,
                                hInstance, szCmdLine);
 
+
+    HDC hdc = GetDC(hwnd);
+
+    PIXELFORMATDESCRIPTOR pfd;
+    memset(&pfd, 0, sizeof(PIXELFORMATDESCRIPTOR));
+    pfd.nSize = sizeof(PIXELFORMATDESCRIPTOR);
+    pfd.nVersion = 1;
+    pfd.dwFlags = PFD_SUPPORT_OPENGL | PFD_DRAW_TO_WINDOW | PFD_DOUBLEBUFFER;
+    pfd.iPixelType = PFD_TYPE_RGBA;
+    pfd.cColorBits = 24;
+    pfd.cDepthBits = 32;
+    pfd.cStencilBits = 8;
+    pfd.iLayerType = PFD_MAIN_PLANE;
+    int pixelFormat = ChoosePixelFormat(hdc, &pfd);
+    SetPixelFormat(hdc, pixelFormat, &pfd);
+
+    // Create OpenGL context
+    HGLRC tempRC = wglCreateContext(hdc);
+    wglMakeCurrent(hdc, tempRC);
+    PFNWGLCREATECONTEXTATTRIBSARBPROC wglCreateContextAttribsARB = nullptr;
+    wglCreateContextAttribsARB = (PFNWGLCREATECONTEXTATTRIBSARBPROC) wglGetProcAddress("wglCreateContextAttribsARB");
+
+    const int attribList[] = {
+            WGL_CONTEXT_MAJOR_VERSION_ARB,
+            3,
+            WGL_CONTEXT_MINOR_VERSION_ARB,
+            3,
+            WGL_CONTEXT_FLAGS_ARB,
+            0,
+            WGL_CONTEXT_PROFILE_MASK_ARB,
+            WGL_CONTEXT_CORE_PROFILE_BIT_ARB,
+            0,
+    };
+    HGLRC hglrc = wglCreateContextAttribsARB(hdc, nullptr, attribList);
+
+    wglMakeCurrent(nullptr, nullptr);
+    wglDeleteContext(tempRC);
+    wglMakeCurrent(hdc, hglrc);
+
+    gl gl_funcs = {};
+    if (!gladLoaderLoadGL()) {
+        printf("Could not initialize GLAD\n");
+        exit(1);
+    }
+    else {
+        gl_funcs.viewport = glViewport;
+        gl_funcs.clear_color = glClearColor;
+        gl_funcs.clear = glClear;
+        gl_funcs.enable = glEnable;
+    }
+
+    auto _wglGetExtensionsStringEXT = (PFNWGLGETEXTENSIONSSTRINGEXTPROC) wglGetProcAddress(
+            "wglGetExtensionsStringEXT");
+    bool swapControlSupported = strstr(_wglGetExtensionsStringEXT(), "WGL_EXT_swap_control") != 0;
+
+    int vsynch = 0;
+    if (swapControlSupported) {
+        // TODO: Remove auto?
+        auto wglSwapIntervalEXT = (PFNWGLSWAPINTERVALEXTPROC) wglGetProcAddress(
+                "wglSwapIntervalEXT");
+        auto wglGetSwapIntervalEXT = (PFNWGLGETSWAPINTERVALEXTPROC) wglGetProcAddress(
+                "wglGetSwapIntervalEXT");
+
+        if (wglSwapIntervalEXT(1)) {
+            vsynch = wglGetSwapIntervalEXT();
+        } else {
+            printf("Could not enable vsync\n");
+        }
+    } else { // !swapControlSupported
+        printf("WGL_EXT_swap_control not supported\n");
+    }
+
     ShowWindow(hwnd, SW_SHOW);
     UpdateWindow(hwnd);
 
     AppFunctions app_functions = {};
     void *memory = malloc(256);
-    while (is_running) { // NOLINT
+
+    auto is_running = true;
+    while (is_running) {
         auto should_reload_dll = win32_should_reload_dll(&app_functions);
         if (should_reload_dll) {
             printf("Loading dll...\n");
             win32_load_dll(&app_functions);
-        } else {
         }
-        win32_process_pending_messages(hwnd);
-        app_functions.update_and_render(memory);
-    }
 
+        win32_process_pending_messages(hwnd, is_running);
+        app_functions.update_and_render(memory, &gl_funcs);
+
+        RECT clientRect;
+        GetClientRect(hwnd, &clientRect);
+        auto height = clientRect.bottom - clientRect.top;
+        auto width = clientRect.right - clientRect.left;
+
+        SwapBuffers(hdc);
+        if (vsynch != 0) {
+            glFinish();
+        }
+
+        GLenum err;
+        while((err = glGetError()) != GL_NO_ERROR)
+        {
+            printf("OpenGL Error %d\n", err);
+        }
+    }
 
     return 0;
 }
