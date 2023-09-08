@@ -1,5 +1,7 @@
 cmake_minimum_required(VERSION 3.10)   # Adjust according to your installed version
 
+project(Application)
+
 add_library(Application SHARED application.cpp)
 
 set_target_properties(Application PROPERTIES

@@ -6,23 +6,91 @@
 
 static bool is_running = true;
 
+typedef void (__cdecl *update_and_render_type)(void *);
 
-bool win32_should_reload_dll(FILETIME prev_dll_last_write_time) {
-    HANDLE h_file = CreateFile(TEXT("Application.dll"), GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL,
-                               nullptr);
+struct AppFunctions {
+    HMODULE handle = nullptr;
+    update_and_render_type update_and_render = nullptr;
+    FILETIME last_loaded_dll_write_time = {0, 0};
+};
 
-    if (h_file == INVALID_HANDLE_VALUE) {
-        printf("Unable to open Application.dll\n");
+void win32_print_file_times(FILETIME first, FILETIME second) {
+    SYSTEMTIME systemTime;
+    FileTimeToSystemTime(&first, &systemTime);
+    printf("%d:%d:%d", systemTime.wHour, systemTime.wMinute, systemTime.wSecond);
+
+    FileTimeToSystemTime(&second, &systemTime);
+    printf("- %d:%d:%d\n", systemTime.wHour, systemTime.wMinute, systemTime.wSecond);
+}
+
+bool win32_should_reload_dll(AppFunctions *app_functions) {
+    if (app_functions->update_and_render == nullptr) {
+        return true;
+    }
+
+    LPCTSTR path = "Application.dll";
+    WIN32_FILE_ATTRIBUTE_DATA file_info;
+    if (GetFileAttributesEx(path, GetFileExInfoStandard, &file_info)) {
+        //win32_print_file_times(file_info.ftLastWriteTime, app_functions->last_loaded_dll_write_time);
+        auto result = CompareFileTime(&file_info.ftLastWriteTime, &app_functions->last_loaded_dll_write_time);
+        //printf("ftLatWriteTime - last_loaded_time %ld\n", result);
+        return result > 0;
+    }
+    else {
+        printf("Unable to open read time of '%s'.\n", path);
         return false;
     }
 
-    FILETIME creation_time, last_access_time, last_write_time;
-    if (!GetFileTime(h_file, &creation_time, &last_access_time, &last_write_time)) {
-        printf("Unable to open read time of Application.dll\n");
-        return false;
+
+}
+
+void win32_copy_dll() {
+    LPCTSTR source = "Application.dll";
+    LPCTSTR destination = "Application_in_use.dll";
+
+    int num_retries = 0;
+    while (!CopyFile(source, destination, FALSE) && num_retries < 20) {
+        printf("Failed to copy %s to %s", source, destination);
+        Sleep(100);
+        num_retries++;
+    }
+}
+
+void win32_load_dll(AppFunctions *functions) {
+    printf("win32_load_dll\n");
+    if (functions->handle != nullptr) {
+        FreeLibrary(functions->handle);
+        functions->handle = nullptr;
+
+        int num_retries = 0;
+        while(!DeleteFile("Application_in_use.dll") && num_retries < 20) {
+            Sleep(100);
+            printf("Failed to delete temp .dll. Retrying...\n");
+            num_retries++;
+        }
     }
 
-    return CompareFileTime(&last_write_time, &prev_dll_last_write_time) < 0;
+    win32_copy_dll();
+
+    functions->handle = LoadLibrary(TEXT("Application_in_use.dll"));
+    if (functions->handle == nullptr) {
+        printf("Unable to load Application_in_use.dll\n");
+        functions->update_and_render = nullptr;
+        return;
+    }
+
+    functions->update_and_render = (update_and_render_type) GetProcAddress(functions->handle, "update_and_render");
+
+    if (functions->update_and_render == nullptr) {
+        printf("Unable to load 'update_and_render' function in Application_in_use.dll\n");
+        FreeLibrary(functions->handle);
+    }
+
+    LPCTSTR path = "Application.dll";
+    WIN32_FILE_ATTRIBUTE_DATA file_info;
+    if (GetFileAttributesEx(path, GetFileExInfoStandard, &file_info)) {
+        functions->last_loaded_dll_write_time = file_info.ftLastWriteTime;
+    }
 }
 
 void win32_process_pending_messages(HWND hwnd) {
@@ -126,18 +194,17 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR szCmdLine,
     ShowWindow(hwnd, SW_SHOW);
     UpdateWindow(hwnd);
 
-    FILETIME last_loaded_dll_write_time = { 0, 0};
-
+    AppFunctions app_functions = {};
+    void *memory = malloc(256);
     while (is_running) { // NOLINT
-        auto should_reload_dll = win32_should_reload_dll(last_loaded_dll_write_time);
+        auto should_reload_dll = win32_should_reload_dll(&app_functions);
         if (should_reload_dll) {
-            printf("Should reload\n");
-        }
-        else {
-            printf("Should NOT reload\n");
+            printf("Loading dll...\n");
+            win32_load_dll(&app_functions);
+        } else {
         }
         win32_process_pending_messages(hwnd);
-        update_and_render();
+        app_functions.update_and_render(memory);
     }
 
 
