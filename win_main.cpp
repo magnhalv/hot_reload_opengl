@@ -11,7 +11,8 @@
 
 struct AppFunctions {
     HMODULE handle = nullptr;
-    update_and_render_type update_and_render = nullptr;
+    UPDATE_AND_RENDER_PROC update_and_render = nullptr;
+    LOAD_GL_FUNCTIONS_PROC load_gl_functions = nullptr;
     FILETIME last_loaded_dll_write_time = {0, 0};
 };
 
@@ -66,10 +67,15 @@ void win32_load_dll(AppFunctions *functions) {
         return;
     }
 
-    functions->update_and_render = (update_and_render_type) GetProcAddress(functions->handle, "update_and_render");
-
+    functions->update_and_render = (UPDATE_AND_RENDER_PROC) GetProcAddress(functions->handle, "update_and_render");
     if (functions->update_and_render == nullptr) {
         printf("Unable to load 'update_and_render' function in Application_in_use.dll\n");
+        FreeLibrary(functions->handle);
+    }
+
+    functions->load_gl_functions = (LOAD_GL_FUNCTIONS_PROC) GetProcAddress(functions->handle, "load_gl_functions");
+    if (functions->load_gl_functions == nullptr) {
+        printf("Unable to load 'load_gl_functions' function in Application_in_use.dll\n");
         FreeLibrary(functions->handle);
     }
 
@@ -205,7 +211,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR szCmdLine,
     wglDeleteContext(tempRC);
     wglMakeCurrent(hdc, hglrc);
 
-    gl gl_funcs = {};
+    GLFunctions gl_funcs = {};
     if (!gladLoaderLoadGL()) {
         printf("Could not initialize GLAD\n");
         exit(1);
@@ -250,10 +256,11 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR szCmdLine,
         if (should_reload_dll) {
             printf("Loading dll...\n");
             win32_load_dll(&app_functions);
+            app_functions.load_gl_functions(&gl_funcs);
         }
 
         win32_process_pending_messages(hwnd, is_running);
-        app_functions.update_and_render(memory, &gl_funcs);
+        app_functions.update_and_render(memory);
 
         RECT clientRect;
         GetClientRect(hwnd, &clientRect);

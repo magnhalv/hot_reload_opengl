@@ -9,13 +9,14 @@
 
 #include <glad/gl.h>
 
-struct gl {
+struct GLFunctions {
     PFNGLVIEWPORTPROC viewport;
     PFNGLCLEARCOLORPROC clear_color;
     PFNGLCLEARPROC clear;
     PFNGLENABLEPROC enable;
 };
 
-typedef void (__cdecl *update_and_render_type)(void *, gl*);
+typedef void (__cdecl *UPDATE_AND_RENDER_PROC)(void *);
+typedef void (__cdecl *LOAD_GL_FUNCTIONS_PROC)(GLFunctions*);
 
 #endif //HOT_RELOAD_OPENGL_PLATFORM_H

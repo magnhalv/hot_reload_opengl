@@ -273,7 +273,7 @@ glm::mat4 transform(glm::vec2 const& Orientation, glm::vec3 const& Translate, gl
 
 ### <a name="section1_4"></a> 1.4. Dependencies
 
-GLM does not depend on external libraries or headers such as `<GL/gl.h>`, [`<GL/glcorearb.h>`](http://www.opengl.org/registry/api/GL/glcorearb.h), `<GLES3/gl3.h>`, `<GL/glu.h>`, or `<windows.h>`.
+GLM does not depend on external libraries or headers such as `<GL/GLFunctions.h>`, [`<GL/glcorearb.h>`](http://www.opengl.org/registry/api/GL/glcorearb.h), `<GLES3/gl3.h>`, `<GL/glu.h>`, or `<windows.h>`.
 
 ### <a name="section1_5"></a> 1.5. Finding GLM with CMake
 
@@ -2370,7 +2370,7 @@ LibreOffice includes several applications that make it the most powerful Free an
 * [*OpenGL Programming on Wikibooks*](http://en.wikibooks.org/wiki/OpenGL_Programming): For beginners who are discovering OpenGL.
 * [*3D Game Engine Programming*](http://3dgep.com/): Learning the latest 3D Game Engine Programming techniques.
 * [Game Tutorials](http://www.gametutorials.com/opengl-4-matrices-and-glm/), graphics and game programming.
-* [open.gl](https://open.gl/), OpenGL tutorial
+* [open.GLFunctions](https://open.GLFunctions/), OpenGL tutorial
 * [c-jump](http://www.c-jump.com/bcc/common/Talk3/Math/GLM/GLM.html), GLM tutorial
 * [Learn OpenGL](http://learnopengl.com/), OpenGL tutorial
 * [***Are you using GLM in a tutorial?***](mailto:glm@g-truc.net)

@@ -8,6 +8,12 @@ struct AppState {
     f32 time = 0;
 };
 
-extern "C" __declspec(dllexport) void update_and_render(void *memory, gl* gl);
+static GLFunctions *gl;
+
+extern "C" __declspec(dllexport) void update_and_render(void *memory);
+
+extern "C" __declspec(dllexport) void load_gl_functions(GLFunctions * in_gl) {
+    gl = in_gl;
+}
 
 #endif //HOT_RELOAD_OPENGL_APPLICATION_H
