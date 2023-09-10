@@ -7,16 +7,14 @@
 #include "platform.h"
 #include "src/types.h"
 
-
-
-struct AppFunctions {
+struct ApplicationFunctions {
     HMODULE handle = nullptr;
     UPDATE_AND_RENDER_PROC update_and_render = nullptr;
     LOAD_GL_FUNCTIONS_PROC load_gl_functions = nullptr;
     FILETIME last_loaded_dll_write_time = {0, 0};
 };
 
-bool win32_should_reload_dll(AppFunctions *app_functions) {
+bool win32_should_reload_dll(ApplicationFunctions *app_functions) {
     if (app_functions->update_and_render == nullptr) {
         return true;
     }
@@ -45,7 +43,7 @@ void win32_copy_dll() {
     }
 }
 
-void win32_load_dll(AppFunctions *functions) {
+void win32_load_dll(ApplicationFunctions *functions) {
     if (functions->handle != nullptr) {
         FreeLibrary(functions->handle);
         functions->handle = nullptr;
@@ -221,6 +219,8 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR szCmdLine,
         gl_funcs.clear_color = glClearColor;
         gl_funcs.clear = glClear;
         gl_funcs.enable = glEnable;
+        gl_funcs.get_error = glGetError;
+        gl_funcs.finish = glFinish;
     }
 
     auto _wglGetExtensionsStringEXT = (PFNWGLGETEXTENSIONSSTRINGEXTPROC) wglGetProcAddress(
@@ -247,36 +247,39 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR szCmdLine,
     ShowWindow(hwnd, SW_SHOW);
     UpdateWindow(hwnd);
 
-    AppFunctions app_functions = {};
-    void *memory = malloc(256);
+    ApplicationMemory memory = {};
+    memory.permanent_storage_size = Permanent_Storage_Size;
+    memory.permanent_storage = VirtualAlloc(nullptr, // TODO: Might want to set this
+                                          (SIZE_T)memory.permanent_storage_size,
+                                          MEM_RESERVE|MEM_COMMIT,
+                                          PAGE_READWRITE);
+    if (memory.permanent_storage == nullptr) {
+        auto error = GetLastError();
+        printf("Unable to allocate memory: %lu", error);
+        return -1;
+    }
+
+    ApplicationInput app_input = {};
+
+    ApplicationFunctions app_functions = {};
 
     auto is_running = true;
     while (is_running) {
-        auto should_reload_dll = win32_should_reload_dll(&app_functions);
-        if (should_reload_dll) {
-            printf("Loading dll...\n");
+        if (win32_should_reload_dll(&app_functions)) {
+            printf("Hot reloading dll...\n");
             win32_load_dll(&app_functions);
             app_functions.load_gl_functions(&gl_funcs);
         }
 
-        win32_process_pending_messages(hwnd, is_running);
-        app_functions.update_and_render(memory);
-
         RECT clientRect;
         GetClientRect(hwnd, &clientRect);
-        auto height = clientRect.bottom - clientRect.top;
-        auto width = clientRect.right - clientRect.left;
+        app_input.client_height = clientRect.bottom - clientRect.top;
+        app_input.client_width = clientRect.right - clientRect.left;
+
+        win32_process_pending_messages(hwnd, is_running);
+        app_functions.update_and_render(&memory, &app_input);
 
         SwapBuffers(hdc);
-        if (vsynch != 0) {
-            glFinish();
-        }
-
-        GLenum err;
-        while((err = glGetError()) != GL_NO_ERROR)
-        {
-            printf("OpenGL Error %d\n", err);
-        }
     }
 
     return 0;

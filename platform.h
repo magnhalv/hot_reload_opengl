@@ -9,14 +9,30 @@
 
 #include <glad/gl.h>
 
+#include "src/types.h"
+
 struct GLFunctions {
     PFNGLVIEWPORTPROC viewport;
     PFNGLCLEARCOLORPROC clear_color;
     PFNGLCLEARPROC clear;
     PFNGLENABLEPROC enable;
+    PFNGLGETERRORPROC get_error;
+    PFNGLFINISHPROC finish;
 };
 
-typedef void (__cdecl *UPDATE_AND_RENDER_PROC)(void *);
+struct ApplicationMemory {
+    size_t permanent_storage_size;
+    void *permanent_storage; // NOTE: Must be cleared to zero
+};
+
+struct ApplicationInput {
+    i32 client_width;
+    i32 client_height;
+};
+
+typedef void (__cdecl *UPDATE_AND_RENDER_PROC)(ApplicationMemory*, ApplicationInput*);
 typedef void (__cdecl *LOAD_GL_FUNCTIONS_PROC)(GLFunctions*);
+
+const u64 Permanent_Storage_Size = KiloBytes(1);
 
 #endif //HOT_RELOAD_OPENGL_PLATFORM_H
