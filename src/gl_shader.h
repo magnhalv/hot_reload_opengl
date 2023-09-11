@@ -21,8 +21,8 @@ private:
     GLenum type_;
     GLuint handle_;
 
-    std::string readShaderFile(const char* fileName);
-    void printShaderSource(const char* text);
+    std::string read_shader_file(const char* fileName);
+    static void print_shader_source(const char* text);
 };
 
 class GLProgram
@@ -54,5 +54,7 @@ public:
 private:
     GLuint handle_;
 };
+
+GLenum GLShaderType_from_file_name(const char* file_name);
 
 #endif //HOT_RELOAD_OPENGL_GL_SHADER_H

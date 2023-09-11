@@ -24,8 +24,7 @@ bool win32_should_reload_dll(ApplicationFunctions *app_functions) {
     if (GetFileAttributesEx(path, GetFileExInfoStandard, &file_info)) {
         auto result = CompareFileTime(&file_info.ftLastWriteTime, &app_functions->last_loaded_dll_write_time);
         return result > 0;
-    }
-    else {
+    } else {
         printf("Unable to open read time of '%s'.\n", path);
         return false;
     }
@@ -49,7 +48,7 @@ void win32_load_dll(ApplicationFunctions *functions) {
         functions->handle = nullptr;
 
         int num_retries = 0;
-        while(!DeleteFile("Application_in_use.dll") && num_retries < 20) {
+        while (!DeleteFile("Application_in_use.dll") && num_retries < 20) {
             Sleep(100);
             printf("Failed to delete temp .dll. Retrying...\n");
             num_retries++;
@@ -213,14 +212,29 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR szCmdLine,
     if (!gladLoaderLoadGL()) {
         printf("Could not initialize GLAD\n");
         exit(1);
-    }
-    else {
-        gl_funcs.viewport = glViewport;
-        gl_funcs.clear_color = glClearColor;
+    } else {
+        gl_funcs.attach_shader = glAttachShader;
         gl_funcs.clear = glClear;
+        gl_funcs.clear_color = glClearColor;
+        gl_funcs.compile_shader = glCompileShader;
+        gl_funcs.create_buffers = glCreateBuffers;
+        gl_funcs.create_program = glCreateProgram;
+        gl_funcs.create_shader = glCreateShader;
+        gl_funcs.delete_buffers = glDeleteBuffers;
+        gl_funcs.delete_program = glDeleteProgram;
+        gl_funcs.delete_shader = glDeleteShader;
         gl_funcs.enable = glEnable;
-        gl_funcs.get_error = glGetError;
         gl_funcs.finish = glFinish;
+        gl_funcs.get_error = glGetError;
+        gl_funcs.get_program_info_log = glGetProgramInfoLog;
+        gl_funcs.get_shader_info_log = glGetShaderInfoLog;
+        gl_funcs.get_uniform_location = glGetUniformLocation;
+        gl_funcs.link_program = glLinkProgram;
+        gl_funcs.named_buffer_storage = glNamedBufferStorage;
+        gl_funcs.shader_source = glShaderSource;
+        gl_funcs.uniform_4f = glUniform4f;
+        gl_funcs.use_program = glUseProgram;
+        gl_funcs.viewport = glViewport;
     }
 
     auto _wglGetExtensionsStringEXT = (PFNWGLGETEXTENSIONSSTRINGEXTPROC) wglGetProcAddress(
@@ -250,9 +264,9 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR szCmdLine,
     ApplicationMemory memory = {};
     memory.permanent_storage_size = Permanent_Storage_Size;
     memory.permanent_storage = VirtualAlloc(nullptr, // TODO: Might want to set this
-                                          (SIZE_T)memory.permanent_storage_size,
-                                          MEM_RESERVE|MEM_COMMIT,
-                                          PAGE_READWRITE);
+                                            (SIZE_T) memory.permanent_storage_size,
+                                            MEM_RESERVE | MEM_COMMIT,
+                                            PAGE_READWRITE);
     if (memory.permanent_storage == nullptr) {
         auto error = GetLastError();
         printf("Unable to allocate memory: %lu", error);

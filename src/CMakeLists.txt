@@ -2,9 +2,12 @@ cmake_minimum_required(VERSION 3.10)   # Adjust according to your installed vers
 
 project(Application)
 
-add_library(Application SHARED application.cpp)
+add_library(Application SHARED
+        application.cpp
+        )
 
 include_directories(../deps/glad/include)
+
 
 target_link_libraries(Application)
 

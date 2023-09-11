@@ -12,12 +12,28 @@
 #include "src/types.h"
 
 struct GLFunctions {
-    PFNGLVIEWPORTPROC viewport;
+    PFNGLATTACHSHADERPROC attach_shader;
     PFNGLCLEARCOLORPROC clear_color;
     PFNGLCLEARPROC clear;
+    PFNGLCOMPILESHADERPROC compile_shader;
+    PFNGLCREATEBUFFERSPROC create_buffers;
+    PFNGLCREATEPROGRAMPROC create_program;
+    PFNGLCREATESHADERPROC create_shader;
+    PFNGLDELETEBUFFERSPROC delete_buffers;
+    PFNGLDELETEPROGRAMPROC delete_program;
+    PFNGLDELETESHADERPROC delete_shader;
     PFNGLENABLEPROC enable;
-    PFNGLGETERRORPROC get_error;
     PFNGLFINISHPROC finish;
+    PFNGLGETERRORPROC get_error;
+    PFNGLGETPROGRAMINFOLOGPROC get_program_info_log;
+    PFNGLGETSHADERINFOLOGPROC get_shader_info_log;
+    PFNGLGETUNIFORMLOCATIONPROC get_uniform_location;
+    PFNGLLINKPROGRAMPROC link_program;
+    PFNGLNAMEDBUFFERSTORAGEPROC named_buffer_storage;
+    PFNGLSHADERSOURCEPROC shader_source;
+    PFNGLUNIFORM4FPROC uniform_4f;
+    PFNGLUSEPROGRAMPROC use_program;
+    PFNGLVIEWPORTPROC viewport;
 };
 
 struct ApplicationMemory {
