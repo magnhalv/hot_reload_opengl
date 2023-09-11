@@ -5,7 +5,7 @@
 #include <glad/wgl.h>
 
 #include "platform.h"
-#include "src/types.h"
+#include "application/src/types.h"
 
 struct ApplicationFunctions {
     HMODULE handle = nullptr;
@@ -19,7 +19,7 @@ bool win32_should_reload_dll(ApplicationFunctions *app_functions) {
         return true;
     }
 
-    LPCTSTR path = "Application.dll";
+    LPCTSTR path = R"(.\bin\Application.dll)";
     WIN32_FILE_ATTRIBUTE_DATA file_info;
     if (GetFileAttributesEx(path, GetFileExInfoStandard, &file_info)) {
         auto result = CompareFileTime(&file_info.ftLastWriteTime, &app_functions->last_loaded_dll_write_time);
@@ -31,12 +31,13 @@ bool win32_should_reload_dll(ApplicationFunctions *app_functions) {
 }
 
 void win32_copy_dll() {
-    LPCTSTR source = "Application.dll";
-    LPCTSTR destination = "Application_in_use.dll";
+    LPCTSTR source = R"(.\bin\Application.dll)";
+    LPCTSTR destination = R"(.\bin\Application_in_use.dll)";
 
     int num_retries = 0;
     while (!CopyFile(source, destination, FALSE) && num_retries < 20) {
-        printf("Failed to copy %s to %s", source, destination);
+        DWORD error = GetLastError();
+        printf("Failed to copy %s to %s. Error code: %lu\n", source, destination, error);
         Sleep(100);
         num_retries++;
     }
@@ -48,7 +49,7 @@ void win32_load_dll(ApplicationFunctions *functions) {
         functions->handle = nullptr;
 
         int num_retries = 0;
-        while (!DeleteFile("Application_in_use.dll") && num_retries < 20) {
+        while (!DeleteFile(".\\bin\\Application_in_use.dll") && num_retries < 20) {
             Sleep(100);
             printf("Failed to delete temp .dll. Retrying...\n");
             num_retries++;
@@ -57,7 +58,7 @@ void win32_load_dll(ApplicationFunctions *functions) {
 
     win32_copy_dll();
 
-    functions->handle = LoadLibrary(TEXT("Application_in_use.dll"));
+    functions->handle = LoadLibrary(TEXT("bin\\Application_in_use.dll"));
     if (functions->handle == nullptr) {
         printf("Unable to load Application_in_use.dll\n");
         functions->update_and_render = nullptr;
@@ -76,7 +77,7 @@ void win32_load_dll(ApplicationFunctions *functions) {
         FreeLibrary(functions->handle);
     }
 
-    LPCTSTR path = "Application.dll";
+    LPCTSTR path = "bin\\Application.dll";
     WIN32_FILE_ATTRIBUTE_DATA file_info;
     if (GetFileAttributesEx(path, GetFileExInfoStandard, &file_info)) {
         functions->last_loaded_dll_write_time = file_info.ftLastWriteTime;
@@ -139,6 +140,15 @@ int main() {
 #endif
 
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR szCmdLine, int iCmdShow) {
+    const DWORD buffer_size = 260; // MAX_PATH
+    TCHAR buffer[buffer_size];
+
+    if (GetCurrentDirectory(buffer_size, buffer)) {
+        printf("Current directory: %s\n", buffer);
+    } else {
+        printf("Current directory failed.");
+    }
+
     WNDCLASSEX wndclass;
     wndclass.cbSize = sizeof(WNDCLASSEX);
     wndclass.style = CS_HREDRAW | CS_VREDRAW | CS_OWNDC;

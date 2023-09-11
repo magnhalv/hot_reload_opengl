@@ -1,7 +1,7 @@
 #ifndef HOT_RELOAD_OPENGL_APPLICATION_H
 #define HOT_RELOAD_OPENGL_APPLICATION_H
 
-#include "../platform.h"
+#include "../../platform.h"
 #include "types.h"
 #include "assets.h"
 

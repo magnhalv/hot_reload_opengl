@@ -9,7 +9,7 @@
 
 #include <glad/gl.h>
 
-#include "src/types.h"
+#include "application/src/types.h"
 
 struct GLFunctions {
     PFNGLATTACHSHADERPROC attach_shader;
