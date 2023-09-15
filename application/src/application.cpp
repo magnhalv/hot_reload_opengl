@@ -4,11 +4,22 @@
 #include "application.h"
 #include "gl_shader.h"
 
+GLFunctions *gl = nullptr;
+
 void update_and_render(ApplicationMemory *memory, ApplicationInput *app_input) {
-    auto *state = (AppState*)memory;
+    auto *state = (AppState*)memory->permanent_storage;
 
     if (!state->is_initialized) {
-        //GLShader vertex("")
+        GLShader vertex(R"(.\assets\shaders\basic.vert)");
+        GLShader frag(R"(.\assets\shaders\basic.frag)");
+        GLProgram program;
+        program.initialize(vertex, frag);
+
+        state->transient.size = memory->transient_storage_size;
+        state->transient.memory = (u8*)memory->transient_storage;
+        set_transient_arena(&state->transient);
+
+        state->is_initialized = true;
     }
 
     gl->viewport(0, 0, app_input->client_width, app_input->client_height);

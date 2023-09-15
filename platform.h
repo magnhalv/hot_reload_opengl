@@ -37,8 +37,10 @@ struct GLFunctions {
 };
 
 struct ApplicationMemory {
-    size_t permanent_storage_size;
-    void *permanent_storage; // NOTE: Must be cleared to zero
+    size_t permanent_storage_size = 0;
+    void *permanent_storage = nullptr; // NOTE: Must be cleared to zero
+    size_t transient_storage_size = 0;
+    void *transient_storage = nullptr; // NOTE: Must be cleared to zero
 };
 
 struct ApplicationInput {
@@ -50,5 +52,6 @@ typedef void (__cdecl *UPDATE_AND_RENDER_PROC)(ApplicationMemory*, ApplicationIn
 typedef void (__cdecl *LOAD_GL_FUNCTIONS_PROC)(GLFunctions*);
 
 const u64 Permanent_Storage_Size = KiloBytes(1);
+const u64 Transient_Storage_Size = KiloBytes(1);
 
 #endif //HOT_RELOAD_OPENGL_PLATFORM_H

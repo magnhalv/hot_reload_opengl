@@ -4,14 +4,16 @@
 #include "../../platform.h"
 #include "types.h"
 #include "assets.h"
+#include "memory.h"
 
 
 struct AppState {
     bool is_initialized = false;
     f32 time = 0;
+    MemoryArena transient;
 };
 
-static GLFunctions *gl;
+extern GLFunctions *gl;
 
 extern "C" __declspec(dllexport) void update_and_render(ApplicationMemory *memory, ApplicationInput *app_input);
 

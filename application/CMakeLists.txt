@@ -6,6 +6,7 @@ add_library(Application SHARED
         src/application.cpp
         #src/asset_import.cpp
         src/gl_shader.cpp
+        src/memory.cpp
         )
 
 include_directories(../shared_deps/glad/include)

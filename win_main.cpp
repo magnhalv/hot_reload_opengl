@@ -273,15 +273,19 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR szCmdLine,
 
     ApplicationMemory memory = {};
     memory.permanent_storage_size = Permanent_Storage_Size;
-    memory.permanent_storage = VirtualAlloc(nullptr, // TODO: Might want to set this
-                                            (SIZE_T) memory.permanent_storage_size,
+    memory.transient_storage_size = Transient_Storage_Size;
+    void* memory_block = VirtualAlloc(nullptr, // TODO: Might want to set this
+                                            (SIZE_T) (memory.permanent_storage_size + memory.transient_storage_size),
                                             MEM_RESERVE | MEM_COMMIT,
-                                            PAGE_READWRITE);
-    if (memory.permanent_storage == nullptr) {
+                                      PAGE_READWRITE);
+    if (memory_block == nullptr) {
         auto error = GetLastError();
         printf("Unable to allocate memory: %lu", error);
         return -1;
     }
+
+    memory.permanent_storage = memory_block;
+    memory.transient_storage = (u8*)memory.permanent_storage + memory.permanent_storage_size;
 
     ApplicationInput app_input = {};
 

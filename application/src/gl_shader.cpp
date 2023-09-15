@@ -11,9 +11,9 @@ GLShader::GLShader(const char* fileName)
 {}
 
 GLShader::GLShader(GLenum type, const char* text, const char* debugFileName)
-        : type_(type)
-        , handle_(gl->create_shader(type))
 {
+    type_ = type;
+    handle_ = gl->create_shader(type);
     gl->shader_source(handle_, 1, &text, nullptr);
     gl->compile_shader(handle_);
 
