@@ -283,7 +283,6 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR szCmdLine,
         printf("Unable to allocate memory: %lu", error);
         return -1;
     }
-
     memory.permanent_storage = memory_block;
     memory.transient_storage = (u8*)memory.permanent_storage + memory.permanent_storage_size;
 

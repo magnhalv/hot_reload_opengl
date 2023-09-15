@@ -7,7 +7,7 @@
 #include "gl_shader.h"
 
 GLShader::GLShader(const char* fileName)
-        : GLShader(GLShaderType_from_file_name(fileName), read_shader_file(fileName).c_str(), fileName)
+        : GLShader(GLShaderType_from_file_name(fileName), read_shader_file(fileName), fileName)
 {}
 
 GLShader::GLShader(GLenum type, const char* text, const char* debugFileName)
@@ -141,7 +141,7 @@ void GLShader::print_shader_source(const char* text)
     printf("\n");
 }
 
-std::string GLShader::read_shader_file(const char* fileName)
+char* GLShader::read_shader_file(const char* fileName)
 {
     FILE* file = fopen(fileName, "r");
 
@@ -152,24 +152,25 @@ std::string GLShader::read_shader_file(const char* fileName)
     }
 
     fseek(file, 0L, SEEK_END);
-    const auto bytesinfile = ftell(file);
+    const auto bytes_in_file = ftell(file);
     fseek(file, 0L, SEEK_SET);
 
-    char* buffer = (char*)alloca(bytesinfile + 1);
-    const size_t bytesread = fread(buffer, 1, bytesinfile, file);
+    char* buffer = (char*)allocate_transient(bytes_in_file + 1);
+    const size_t bytes_read = fread(buffer, 1, bytes_in_file, file);
     fclose(file);
 
-    buffer[bytesread] = 0;
+    buffer[bytes_read] = 0;
 
     static constexpr unsigned char BOM[] = { 0xEF, 0xBB, 0xBF };
 
-    if (bytesread > 3)
+    if (bytes_read > 3)
     {
         if (!memcmp(buffer, BOM, 3))
             memset(buffer, ' ', 3);
     }
 
-    std::string code(buffer);
+    return buffer;
+    /*std::string code(buffer);
 
     while (code.find("#include ") != std::string::npos)
     {
@@ -186,7 +187,7 @@ std::string GLShader::read_shader_file(const char* fileName)
         code.replace(pos, p2-pos+1, include.c_str());
     }
 
-    return code;
+    return code;*/
 }
 
 int ends_with(const char* s, const char* part)

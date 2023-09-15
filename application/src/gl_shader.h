@@ -21,7 +21,7 @@ private:
     GLenum type_;
     GLuint handle_;
 
-    std::string read_shader_file(const char* fileName);
+    static char* read_shader_file(const char* fileName);
     static void print_shader_source(const char* text);
 };
 

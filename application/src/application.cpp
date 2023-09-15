@@ -10,14 +10,16 @@ void update_and_render(ApplicationMemory *memory, ApplicationInput *app_input) {
     auto *state = (AppState*)memory->permanent_storage;
 
     if (!state->is_initialized) {
+        state->transient.size = memory->transient_storage_size;
+        state->transient.used = 0;
+        state->transient.memory = (u8*)memory->transient_storage;
+        set_transient_arena(&state->transient);
+
+
         GLShader vertex(R"(.\assets\shaders\basic.vert)");
         GLShader frag(R"(.\assets\shaders\basic.frag)");
         GLProgram program;
         program.initialize(vertex, frag);
-
-        state->transient.size = memory->transient_storage_size;
-        state->transient.memory = (u8*)memory->transient_storage;
-        set_transient_arena(&state->transient);
 
         state->is_initialized = true;
     }
@@ -32,6 +34,7 @@ void update_and_render(ApplicationMemory *memory, ApplicationInput *app_input) {
     {
         printf("OpenGL Error %d\n", err);
     }
+    clear_transient();
 }
 
 void load_gl_functions(GLFunctions * in_gl) {
