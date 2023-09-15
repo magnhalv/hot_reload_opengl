@@ -3,10 +3,12 @@
 
 #include "application.h"
 #include "gl_shader.h"
+#include "asset_import.h"
 
 GLFunctions *gl = nullptr;
 
 void update_and_render(ApplicationMemory *memory, ApplicationInput *app_input) {
+    assert(sizeof(AppState) < memory->permanent_storage_size);
     auto *state = (AppState*)memory->permanent_storage;
 
     if (!state->is_initialized) {
@@ -15,6 +17,7 @@ void update_and_render(ApplicationMemory *memory, ApplicationInput *app_input) {
         state->transient.memory = (u8*)memory->transient_storage;
         set_transient_arena(&state->transient);
 
+        import_mesh("assets/meshes/cube.glb", &state->mesh);
 
         GLShader vertex(R"(.\assets\shaders\basic.vert)");
         GLShader frag(R"(.\assets\shaders\basic.frag)");

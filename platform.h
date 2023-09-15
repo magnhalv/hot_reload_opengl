@@ -51,7 +51,7 @@ struct ApplicationInput {
 typedef void (__cdecl *UPDATE_AND_RENDER_PROC)(ApplicationMemory*, ApplicationInput*);
 typedef void (__cdecl *LOAD_GL_FUNCTIONS_PROC)(GLFunctions*);
 
-const u64 Permanent_Storage_Size = KiloBytes(1);
+const u64 Permanent_Storage_Size = MegaBytes(10);
 const u64 Transient_Storage_Size = KiloBytes(1);
 
 #endif //HOT_RELOAD_OPENGL_PLATFORM_H

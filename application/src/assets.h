@@ -6,13 +6,15 @@
 
 #include "types.h"
 
+const i32 MESH_MAX_VERTICES = 256;
+
 struct Mesh {
     GLuint vao;
     GLuint position_vbo;
     GLuint normals_vbo;
-    glm::vec3 positions[256]; // TODO: Make this dynamic
+    glm::vec3 positions[MESH_MAX_VERTICES]; // TODO: Make this dynamic
     i32 num_positions;
-    glm::vec3 normals[256]; // TODO: Make this dynamic
+    glm::vec3 normals[MESH_MAX_VERTICES]; // TODO: Make this dynamic
     i32 num_normals;
 
 };

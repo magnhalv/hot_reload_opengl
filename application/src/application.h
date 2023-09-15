@@ -9,7 +9,7 @@
 
 struct AppState {
     bool is_initialized = false;
-    f32 time = 0;
+    Mesh mesh;
     MemoryArena transient;
 };
 

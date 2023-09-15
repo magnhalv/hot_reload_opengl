@@ -4,7 +4,7 @@ project(Application)
 
 add_library(Application SHARED
         src/application.cpp
-        #src/asset_import.cpp
+        src/asset_import.cpp
         src/gl_shader.cpp
         src/memory.cpp
         )
@@ -21,13 +21,14 @@ set(ASSIMP_INSTALL_PDB OFF CACHE BOOL "")
 set(ASSIMP_BUILD_ALL_IMPORTERS_BY_DEFAULT OFF CACHE BOOL "")
 set(ASSIMP_BUILD_OBJ_IMPORTER ON CACHE BOOL "")
 set(ASSIMP_BUILD_GLTF_IMPORTER ON CACHE BOOL "")
+set(BUILD_SHARED_LIBS OFF CACHE BOOL "")
 
-add_subdirectory(deps/src/assimp)
 include_directories(deps/src/assimp/include)
+add_subdirectory(deps/src/assimp)
 
 # END ASSIMP
 
-target_link_libraries(Application)
+target_link_libraries(Application assimp)
 set_target_properties(Application PROPERTIES DEBUG_POSTFIX "")
 
 set_target_properties(Application PROPERTIES

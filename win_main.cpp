@@ -60,7 +60,8 @@ void win32_load_dll(ApplicationFunctions *functions) {
 
     functions->handle = LoadLibrary(TEXT("bin\\Application_in_use.dll"));
     if (functions->handle == nullptr) {
-        printf("Unable to load Application_in_use.dll\n");
+        DWORD error = GetLastError();
+        printf("Unable to load Application_in_use.dll. Error: %d\n", error);
         functions->update_and_render = nullptr;
         return;
     }

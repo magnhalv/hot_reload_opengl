@@ -31,6 +31,8 @@ void import_mesh(const char *path, Mesh* mesh) {
     for (i32 m = 0; m < scene->mNumMeshes; m++) {
         const auto &ai_mesh = scene->mMeshes[m];
 
+        assert(ai_mesh->mNumVertices < MESH_MAX_VERTICES);
+
         for (u32 f = 0; f < ai_mesh->mNumFaces; f++) {
             const auto &ai_face = ai_mesh->mFaces[f];
             assert(ai_face.mNumIndices == 3);
