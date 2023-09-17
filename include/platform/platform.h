@@ -47,6 +47,13 @@ struct GLFunctions {
     PFNGLBINDVERTEXARRAYPROC bind_vertex_array;
 };
 
+// Functions platform MUST support
+typedef u64 (*GET_FILE_LAST_MODIFIED_PROC)(const char *file_path);
+
+struct Platform {
+    GET_FILE_LAST_MODIFIED_PROC get_file_last_modified;
+};
+
 struct ApplicationMemory {
     size_t permanent_storage_size = 0;
     void *permanent_storage = nullptr; // NOTE: Must be cleared to zero
@@ -61,9 +68,10 @@ struct ApplicationInput {
     UserInput *input;
 };
 
+// Functions application MUST support
 typedef void (__cdecl *UPDATE_AND_RENDER_PROC)(ApplicationMemory *, ApplicationInput *);
-
 typedef void (__cdecl *LOAD_GL_FUNCTIONS_PROC)(GLFunctions *);
+typedef void (__cdecl *LOAD_PLATFORM_FUNCTIONS_PROC)(Platform *);
 
 const u64 Permanent_Storage_Size = MegaBytes(10);
 const u64 Transient_Storage_Size = KiloBytes(1);

@@ -12,14 +12,15 @@ struct AppState {
     bool is_initialized = false;
     Mesh mesh;
     Camera camera;
-    GLProgram program;
+    GLShaderProgram program;
     MemoryArena transient;
 };
 
 extern GLFunctions *gl;
+extern Platform *platform;
 
 extern "C" __declspec(dllexport) void update_and_render(ApplicationMemory *memory, ApplicationInput *app_input);
-
 extern "C" __declspec(dllexport) void load_gl_functions(GLFunctions * in_gl);
+extern "C" __declspec(dllexport) void load_platform_functions(Platform *in_platform);
 
 #endif //HOT_RELOAD_OPENGL_APPLICATION_H

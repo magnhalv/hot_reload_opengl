@@ -8,40 +8,22 @@
 
 #include <platform/types.h>
 
+const i32 Shader_Path_Max_Length = 512;
 
-class GLShader
+struct GLShaderProgram
 {
 public:
-    explicit GLShader(const char* file_name);
-    GLShader(GLenum type, const char* text, const char* debug_file_name = "");
-    ~GLShader();
-    [[nodiscard]] GLenum getType() const { return type_; }
-    [[nodiscard]] GLuint getHandle() const { return handle_; }
-
-private:
-    GLenum type_;
-    GLuint handle_;
-
-    static char* read_shader_file(const char* fileName);
-    static void print_shader_source(const char* text);
-};
-
-class GLProgram
-{
-public:
-    void initialize(const GLShader& a);
-    void initialize(const GLShader& a, const GLShader& b);
-    void initialize(const GLShader& a, const GLShader& b, const GLShader& c);
-    void initialize(const GLShader& a, const GLShader& b, const GLShader& c, const GLShader& d, const GLShader& e);
-    ~GLProgram();
-
+    void initialize(const char *a_path, const char *b_path);
     void useProgram() const;
+    void free();
     [[nodiscard]] GLuint getHandle() const { return handle_; }
 
     void set_uniform(const char *name, const glm::vec4 &vec) const;
 
 private:
-    GLuint handle_ = 0;
+    char _a_path[Shader_Path_Max_Length];
+    char _b_path[Shader_Path_Max_Length];
+    GLuint handle_;
 };
 
 class GLBuffer

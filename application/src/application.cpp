@@ -6,36 +6,7 @@
 #include "asset_import.h"
 
 GLFunctions *gl = nullptr;
-
-static const char* shaderCodeVertex = R"(
-#version 460 core
-layout (location=0) out vec3 color;
-const vec2 pos[3] = vec2[3](
-	vec2(-0.6, -0.4),
-	vec2( 0.6, -0.4),
-	vec2( 0.0,  0.6)
-);
-const vec3 col[3] = vec3[3](
-	vec3( 1.0, 0.0, 0.0 ),
-	vec3( 0.0, 1.0, 0.0 ),
-	vec3( 0.0, 0.0, 1.0 )
-);
-void main()
-{
-	gl_Position = vec4(pos[gl_VertexID], 0.0, 1.0);
-	color = col[gl_VertexID];
-}
-)";
-
-static const char* shaderCodeFragment = R"(
-#version 460 core
-layout (location=0) in vec3 color;
-layout (location=0) out vec4 out_FragColor;
-void main()
-{
-	out_FragColor = vec4(color, 1.0);
-};
-)";
+Platform *platform = nullptr;
 
 void update_and_render(ApplicationMemory *memory, ApplicationInput *app_input) {
     assert(sizeof(AppState) < memory->permanent_storage_size);
@@ -53,12 +24,11 @@ void update_and_render(ApplicationMemory *memory, ApplicationInput *app_input) {
 
         import_mesh("assets/meshes/cube.glb", &state->mesh);
 
-        GLShader vertex(R"(.\assets\shaders\mesh.vert)");
-        GLShader frag(R"(.\assets\shaders\basic_light.frag)");
-        state->program.initialize(vertex, frag);
+        state->program.initialize(R"(.\assets\shaders\mesh.vert)", R"(.\assets\shaders\basic_light.frag)");
         state->program.useProgram();
         state->camera.init(-90.0f, 0.0f, glm::vec3(0.0f, 1.0f, 5.0f));
 
+        // TODO: Abstract way meshes
         auto data_size = static_cast<GLsizeiptr>(sizeof(glm::vec3) * mesh->num_vertices); // NOLINT
         assert(mesh->num_vertices == mesh->num_normals);
         gl->create_vertex_arrays(1, &mesh->vao);
@@ -98,6 +68,7 @@ void update_and_render(ApplicationMemory *memory, ApplicationInput *app_input) {
         gl->clear_color(0.0f, 0.0f, 0.0f, 0.0f);
         state->is_initialized = true;
     }
+    printf("Last modified: %llu\n", platform->get_file_last_modified(R"(.\assets\shaders\basic_light.frag)"));
 
     state->camera.update_cursor(static_cast<f32>(app_input->input->mouse.dx), static_cast<f32>(app_input->input->mouse.dy));
     state->camera.update_keyboard(*app_input->input);
@@ -134,4 +105,8 @@ void update_and_render(ApplicationMemory *memory, ApplicationInput *app_input) {
 
 void load_gl_functions(GLFunctions * in_gl) {
     gl = in_gl;
+}
+
+void load_platform_functions(Platform *in_platform) {
+    platform = in_platform;
 }

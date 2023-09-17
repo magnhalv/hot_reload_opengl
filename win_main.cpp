@@ -11,8 +11,31 @@ struct ApplicationFunctions {
     HMODULE handle = nullptr;
     UPDATE_AND_RENDER_PROC update_and_render = nullptr;
     LOAD_GL_FUNCTIONS_PROC load_gl_functions = nullptr;
+    LOAD_PLATFORM_FUNCTIONS_PROC load_platform_functions = nullptr;
     FILETIME last_loaded_dll_write_time = {0, 0};
 };
+
+u64 win32_file_time_to_u64(const FILETIME &ft) {
+    ULARGE_INTEGER uli;
+    uli.LowPart = ft.dwLowDateTime;
+    uli.HighPart = ft.dwHighDateTime;
+    return uli.QuadPart;
+}
+
+u64 win32_file_last_modified(const char* path) {
+    // TODO: Tighten this up. Need to check that the path is not longer than 512 etc. etc.
+    wchar_t wstr[512];
+    MultiByteToWideChar(CP_ACP, 0, path, -1, wstr, sizeof(wstr) / sizeof(wstr[0]));
+    LPCTSTR lpStr = reinterpret_cast<LPCTSTR>(wstr);
+
+    WIN32_FILE_ATTRIBUTE_DATA file_info;
+    if (GetFileAttributesEx(path, GetFileExInfoStandard, (LPVOID) lpStr)) {
+        return win32_file_time_to_u64(file_info.ftLastWriteTime);
+    } else {
+        printf("PLATFORM (win32_file_last_modified): unable to get file attributes for: '%s'.\n", path);
+        return 0;
+    }
+}
 
 bool win32_should_reload_dll(ApplicationFunctions *app_functions) {
     if (app_functions->update_and_render == nullptr) {
@@ -75,6 +98,12 @@ void win32_load_dll(ApplicationFunctions *functions) {
     functions->load_gl_functions = (LOAD_GL_FUNCTIONS_PROC) GetProcAddress(functions->handle, "load_gl_functions");
     if (functions->load_gl_functions == nullptr) {
         printf("Unable to load 'load_gl_functions' function in Application_in_use.dll\n");
+        FreeLibrary(functions->handle);
+    }
+
+    functions->load_platform_functions = (LOAD_PLATFORM_FUNCTIONS_PROC) GetProcAddress(functions->handle, "load_platform_functions");
+    if (functions->load_platform_functions == nullptr) {
+        printf("Unable to load 'load_platform_functions' function in Application_in_use.dll\n");
         FreeLibrary(functions->handle);
     }
 
@@ -364,6 +393,13 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR szCmdLine,
     u32 curr_input_idx = 0;
     auto *current_input = &inputs[curr_input_idx];
     auto *previous_input = &inputs[curr_input_idx + 1];
+
+
+    Platform platform = {};
+    platform.get_file_last_modified = &win32_file_last_modified;
+    win32_load_dll(&app_functions);
+    app_functions.load_gl_functions(&gl_funcs);
+    app_functions.load_platform_functions(&platform);
 
     /* MAIN LOOP */
     auto is_running = true;

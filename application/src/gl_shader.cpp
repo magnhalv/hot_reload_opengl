@@ -6,118 +6,7 @@
 #include "application.h"
 #include "gl_shader.h"
 
-GLShader::GLShader(const char* fileName)
-        : GLShader(GLShaderType_from_file_name(fileName), read_shader_file(fileName), fileName)
-{}
-
-GLShader::GLShader(GLenum type, const char* text, const char* debugFileName)
-{
-    type_ = type;
-    handle_ = gl->create_shader(type);
-    gl->shader_source(handle_, 1, &text, nullptr);
-    gl->compile_shader(handle_);
-
-    char buffer[8192];
-    GLsizei length = 0;
-    gl->get_shader_info_log(handle_, sizeof(buffer), &length, buffer);
-
-    if (length)
-    {
-        printf("%s (File: %s)\n", buffer, debugFileName);
-        print_shader_source(text);
-        assert(false);
-    }
-}
-
-GLShader::~GLShader()
-{
-    gl->delete_shader(handle_);
-}
-
-void printProgramInfoLog(GLuint handle)
-{
-    char buffer[8192];
-    GLsizei length = 0;
-    gl->get_program_info_log(handle, sizeof(buffer), &length, buffer);
-    if (length)
-    {
-        printf("%s\n", buffer);
-        assert(false);
-    }
-}
-
-void GLProgram::initialize(const GLShader& a)
-{
-    assert(handle_ == 0);
-    handle_ = gl->create_program();
-    gl->attach_shader(handle_, a.getHandle());
-    gl->link_program(handle_);
-    printProgramInfoLog(handle_);
-}
-
-void GLProgram::initialize(const GLShader& a, const GLShader& b)
-{
-    assert(handle_ == 0);
-    handle_ = gl->create_program();
-    gl->attach_shader(handle_, a.getHandle());
-    gl->attach_shader(handle_, b.getHandle());
-    gl->link_program(handle_);
-    printProgramInfoLog(handle_);
-}
-
-void GLProgram::initialize(const GLShader& a, const GLShader& b, const GLShader& c)
-{
-    assert(handle_ == 0);
-    handle_ = gl->create_program();
-    gl->attach_shader(handle_, a.getHandle());
-    gl->attach_shader(handle_, b.getHandle());
-    gl->attach_shader(handle_, c.getHandle());
-    gl->link_program(handle_);
-    printProgramInfoLog(handle_);
-}
-
-void GLProgram::initialize(const GLShader& a, const GLShader& b, const GLShader& c, const GLShader& d, const GLShader& e)
-{
-    assert(handle_ == 0);
-    handle_ = gl->create_program();
-    gl->attach_shader(handle_, a.getHandle());
-    gl->attach_shader(handle_, b.getHandle());
-    gl->attach_shader(handle_, c.getHandle());
-    gl->attach_shader(handle_, d.getHandle());
-    gl->attach_shader(handle_, e.getHandle());
-    gl->link_program(handle_);
-    printProgramInfoLog(handle_);
-}
-
-void GLProgram::set_uniform(const char *name, const glm::vec4 &vec) const {
-    i32 id = gl->get_uniform_location(handle_, name);
-    gl->uniform_4f(id, vec.x, vec.y, vec.z, vec.w);
-}
-
-GLProgram::~GLProgram()
-{
-    gl->delete_program(handle_);
-}
-
-void GLProgram::useProgram() const
-{
-    assert(handle_ != 0);
-    gl->use_program(handle_);
-}
-
-GLBuffer::GLBuffer(GLsizeiptr size, const void* data, GLbitfield flags)
-{
-    gl->create_buffers(1, &handle_);
-    gl->named_buffer_storage(handle_, size, data, flags);
-}
-
-GLBuffer::~GLBuffer()
-{
-    assert(handle_ != 0);
-    gl->delete_buffers(1, &handle_);
-}
-
-void GLShader::print_shader_source(const char* text)
+void print_shader_source(const char* text)
 {
     int line = 1;
 
@@ -141,7 +30,7 @@ void GLShader::print_shader_source(const char* text)
     printf("\n");
 }
 
-char* GLShader::read_shader_file(const char* fileName)
+char* read_shader_file(const char* fileName)
 {
     FILE* file = fopen(fileName, "r");
 
@@ -150,7 +39,7 @@ char* GLShader::read_shader_file(const char* fileName)
         printf("I/O error. Cannot open shader file '%s'\n", fileName);
         return {};
     }
-
+    // TODO: Use platform read file function
     fseek(file, 0L, SEEK_END);
     const auto bytes_in_file = ftell(file);
     fseek(file, 0L, SEEK_SET);
@@ -188,6 +77,90 @@ char* GLShader::read_shader_file(const char* fileName)
     }
 
     return code;*/
+}
+
+u32 compile_shader(const char* path)
+{
+    auto type = GLShaderType_from_file_name(path);
+    auto text = read_shader_file(path);
+    auto handle = gl->create_shader(type);
+    gl->shader_source(handle, 1, &text, nullptr);
+    gl->compile_shader(handle);
+
+    char buffer[8192];
+    GLsizei length = 0;
+    gl->get_shader_info_log(handle, sizeof(buffer), &length, buffer);
+
+    if (length)
+    {
+        printf("%s (File: %s)\n", buffer, path);
+        print_shader_source(text);
+        assert(false);
+    }
+    return handle;
+}
+
+void print_program_info_log(GLuint handle)
+{
+    char buffer[8192];
+    GLsizei length = 0;
+    gl->get_program_info_log(handle, sizeof(buffer), &length, buffer);
+    if (length)
+    {
+        printf("%s\n", buffer);
+        assert(false);
+    }
+}
+
+void GLShaderProgram::initialize(const char *a_path, const char *b_path)
+{
+    handle_ = gl->create_program();
+    const auto a = compile_shader(a_path);
+    const auto b = compile_shader(b_path);
+
+    const auto a_length = strlen(a_path);
+    const auto b_length = strlen(b_path);
+
+    assert(a_length < Shader_Path_Max_Length);
+    assert(b_length < Shader_Path_Max_Length);
+
+    strcpy_s(_a_path, Shader_Path_Max_Length, a_path);
+    strcpy_s(_b_path, Shader_Path_Max_Length, b_path);
+
+    gl->attach_shader(handle_, a);
+    gl->attach_shader(handle_, b);
+    gl->link_program(handle_);
+    print_program_info_log(handle_);
+}
+
+
+void GLShaderProgram::set_uniform(const char *name, const glm::vec4 &vec) const {
+    i32 id = gl->get_uniform_location(handle_, name);
+    gl->uniform_4f(id, vec.x, vec.y, vec.z, vec.w);
+}
+
+void GLShaderProgram::free()
+{
+    gl->delete_program(handle_);
+    handle_ = 0;
+}
+
+void GLShaderProgram::useProgram() const
+{
+    assert(handle_ != 0);
+    gl->use_program(handle_);
+}
+
+GLBuffer::GLBuffer(GLsizeiptr size, const void* data, GLbitfield flags)
+{
+    gl->create_buffers(1, &handle_);
+    gl->named_buffer_storage(handle_, size, data, flags);
+}
+
+GLBuffer::~GLBuffer()
+{
+    assert(handle_ != 0);
+    gl->delete_buffers(1, &handle_);
 }
 
 int ends_with(const char* s, const char* part)
