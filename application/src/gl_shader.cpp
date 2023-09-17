@@ -197,12 +197,14 @@ int ends_with(const char* s, const char* part)
 
 GLenum GLShaderType_from_file_name(const char* file_name)
 {
-    if (ends_with(file_name, ".vert"))
+    if (ends_with(file_name, ".vert")) {
+        printf("Vert\n");
         return GL_VERTEX_SHADER;
-
-    if (ends_with(file_name, ".frag"))
+    }
+    if (ends_with(file_name, ".frag")) {
+        printf("Frag\n");
         return GL_FRAGMENT_SHADER;
-
+    }
     if (ends_with(file_name, ".geom"))
         return GL_GEOMETRY_SHADER;
 

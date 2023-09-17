@@ -1,8 +1,7 @@
 #version 460 core
 layout(std140, binding = 1) uniform LightUniform
 {
-    vec3 omni_pos;
-    vec3 eye_pos;
+    vec4 omni_pos;
 };
 
 in vec3 norm;
@@ -13,7 +12,7 @@ void main()
 {
     vec3 color = vec3(0.5, 0.5, 0.5);
     vec3 n = normalize(norm);
-    vec3 l = normalize(omni_pos);
+    vec3 l = normalize(omni_pos.xyz);
 
     float diffuse_intensity = clamp(dot(n, l) + 0.1, 0, 1);
 

@@ -11,10 +11,11 @@ if(WIN32)
     set(GLAD_SOURCES ${GLAD_SOURCES} shared_deps/glad/src/wgl.c)
 endif()
 
-
 find_package(OpenGL REQUIRED)
 
 ####### END DEPENDENCIES ########
+
+include_directories(include)
 
 add_executable(hot_reload_opengl
         win_main.cpp

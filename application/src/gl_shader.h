@@ -6,7 +6,8 @@
 #include <glad/gl.h>
 #include <glm/glm.hpp>
 
-#include "types.h"
+#include <platform/types.h>
+
 
 class GLShader
 {

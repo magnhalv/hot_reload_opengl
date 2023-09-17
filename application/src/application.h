@@ -1,15 +1,18 @@
 #ifndef HOT_RELOAD_OPENGL_APPLICATION_H
 #define HOT_RELOAD_OPENGL_APPLICATION_H
 
-#include "../../platform.h"
-#include "types.h"
+#include <platform/platform.h>
+#include <platform/types.h>
 #include "assets.h"
 #include "memory.h"
-
+#include "camera.h"
+#include "gl_shader.h"
 
 struct AppState {
     bool is_initialized = false;
     Mesh mesh;
+    Camera camera;
+    GLProgram program;
     MemoryArena transient;
 };
 

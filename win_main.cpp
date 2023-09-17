@@ -4,8 +4,8 @@
 #include <glad/gl.h>
 #include <glad/wgl.h>
 
-#include "platform.h"
-#include "application/src/types.h"
+#include <platform/platform.h>
+#include <platform/types.h>
 
 struct ApplicationFunctions {
     HMODULE handle = nullptr;
@@ -85,8 +85,18 @@ void win32_load_dll(ApplicationFunctions *functions) {
     }
 }
 
-void win32_process_pending_messages(HWND hwnd, bool &is_running) {
+void win32_process_keyboard_message(ButtonState &new_state, bool is_down) {
+    if (new_state.ended_down != is_down) {
+        new_state.ended_down = is_down;
+        new_state.half_transition_count++;
+    }
+}
+
+void win32_process_pending_messages(HWND hwnd, bool &is_running, UserInput &new_input, UserInput &old_input) {
     MSG message;
+
+    new_input.mouse.dx = 0;
+    new_input.mouse.dy = 0;
     while (PeekMessage(&message, hwnd, 0, 0, PM_REMOVE)) {
         switch (message.message) {
             case WM_QUIT: {
@@ -94,14 +104,35 @@ void win32_process_pending_messages(HWND hwnd, bool &is_running) {
             }
                 break;
             case WM_INPUT: {
-                break;
-                case WM_LBUTTONDOWN: {
+                UINT dwSize;
+
+                GetRawInputData((HRAWINPUT) message.lParam, RID_INPUT, NULL, &dwSize, sizeof(RAWINPUTHEADER));
+                auto lpb = new BYTE[dwSize];
+                if (GetRawInputData((HRAWINPUT) message.lParam, RID_INPUT, lpb, &dwSize, sizeof(RAWINPUTHEADER)) !=
+                    dwSize) {
+                    // Error: couldn't get raw input data
                 }
-                break;
-                case WM_LBUTTONUP: {
-                    break;
+
+                auto *raw = (RAWINPUT *) lpb;
+
+                if (raw->header.dwType == RIM_TYPEMOUSE) {
+                    int xPosRelative = raw->data.mouse.lLastX;
+                    int yPosRelative = raw->data.mouse.lLastY;
+                    new_input.mouse.dx = xPosRelative;
+                    new_input.mouse.dy = yPosRelative;
+                    // Process the mouse movements...
                 }
+
+                delete[] lpb;
+                break;
             }
+            case WM_LBUTTONDOWN: {
+            }
+                break;
+            case WM_LBUTTONUP: {
+                break;
+            }
+
             case WM_SYSKEYDOWN:
             case WM_SYSKEYUP:
             case WM_KEYDOWN:
@@ -110,8 +141,31 @@ void win32_process_pending_messages(HWND hwnd, bool &is_running) {
                 bool was_down = ((message.lParam & (1 << 30)) != 0);
                 bool is_down = ((message.lParam & (1 << 31)) == 0);
                 if (was_down != is_down) {
+                    if (vk_code == 'W') {
+                        win32_process_keyboard_message(new_input.move_up, is_down);
+                    }
+                    if (vk_code == 'A') {
+                        win32_process_keyboard_message(new_input.move_left, is_down);
+                    }
+                    if (vk_code == 'S') {
+                        win32_process_keyboard_message(new_input.move_down, is_down);
+                    }
+                    if (vk_code == 'D') {
+                        win32_process_keyboard_message(new_input.move_right, is_down);
+                    }
+                    if (vk_code == VK_UP) {
+                    }
+                    if (vk_code == VK_DOWN) {
+                    }
+                    if (vk_code == VK_RIGHT) {
+                    }
+                    if (vk_code == VK_LEFT) {
+                    }
                     if (vk_code == VK_ESCAPE) {
                         is_running = false;
+                    }
+                    if (vk_code == VK_SPACE) {
+                        win32_process_keyboard_message(new_input.space, is_down);
                     }
                 }
             }
@@ -121,6 +175,7 @@ void win32_process_pending_messages(HWND hwnd, bool &is_running) {
                 DispatchMessageA(&message);
         }
     }
+
 }
 
 LRESULT CALLBACK WndProc(HWND hwnd, UINT iMsg, WPARAM wParam, LPARAM lParam) {
@@ -141,15 +196,7 @@ int main() {
 #endif
 
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR szCmdLine, int iCmdShow) {
-    const DWORD buffer_size = 260; // MAX_PATH
-    TCHAR buffer[buffer_size];
-
-    if (GetCurrentDirectory(buffer_size, buffer)) {
-        printf("Current directory: %s\n", buffer);
-    } else {
-        printf("Current directory failed.");
-    }
-
+    /* CREATE WINDOW */
     WNDCLASSEX wndclass;
     wndclass.cbSize = sizeof(WNDCLASSEX);
     wndclass.style = CS_HREDRAW | CS_VREDRAW | CS_OWNDC;
@@ -196,7 +243,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR szCmdLine,
     int pixelFormat = ChoosePixelFormat(hdc, &pfd);
     SetPixelFormat(hdc, pixelFormat, &pfd);
 
-    // Create OpenGL context
+    /*  CREATE OPEN_GL CONTEXT */
     HGLRC tempRC = wglCreateContext(hdc);
     wglMakeCurrent(hdc, tempRC);
     PFNWGLCREATECONTEXTATTRIBSARBPROC wglCreateContextAttribsARB = nullptr;
@@ -246,6 +293,16 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR szCmdLine,
         gl_funcs.uniform_4f = glUniform4f;
         gl_funcs.use_program = glUseProgram;
         gl_funcs.viewport = glViewport;
+        gl_funcs.create_vertex_arrays = glCreateVertexArrays;
+        gl_funcs.vertex_array_vertex_buffer = glVertexArrayVertexBuffer;
+        gl_funcs.enable_vertex_array_attrib = glEnableVertexArrayAttrib;
+        gl_funcs.vertex_array_attrib_format = glVertexArrayAttribFormat;
+        gl_funcs.vertex_array_attrib_binding = glVertexArrayAttribBinding;
+        gl_funcs.named_buffer_sub_data = glNamedBufferSubData;
+        gl_funcs.polygon_mode = glPolygonMode;
+        gl_funcs.draw_arrays = glDrawArrays;
+        gl_funcs.bind_buffer_base = glBindBufferBase;
+        gl_funcs.bind_vertex_array = glBindVertexArray;
     }
 
     auto _wglGetExtensionsStringEXT = (PFNWGLGETEXTENSIONSSTRINGEXTPROC) wglGetProcAddress(
@@ -272,12 +329,13 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR szCmdLine,
     ShowWindow(hwnd, SW_SHOW);
     UpdateWindow(hwnd);
 
+    /* MEMORY */
     ApplicationMemory memory = {};
     memory.permanent_storage_size = Permanent_Storage_Size;
     memory.transient_storage_size = Transient_Storage_Size;
-    void* memory_block = VirtualAlloc(nullptr, // TODO: Might want to set this
-                                            (SIZE_T) (memory.permanent_storage_size + memory.transient_storage_size),
-                                            MEM_RESERVE | MEM_COMMIT,
+    void *memory_block = VirtualAlloc(nullptr, // TODO: Might want to set this
+                                      (SIZE_T) (memory.permanent_storage_size + memory.transient_storage_size),
+                                      MEM_RESERVE | MEM_COMMIT,
                                       PAGE_READWRITE);
     if (memory_block == nullptr) {
         auto error = GetLastError();
@@ -285,12 +343,29 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR szCmdLine,
         return -1;
     }
     memory.permanent_storage = memory_block;
-    memory.transient_storage = (u8*)memory.permanent_storage + memory.permanent_storage_size;
+    memory.transient_storage = (u8 *) memory.permanent_storage + memory.permanent_storage_size;
 
     ApplicationInput app_input = {};
 
     ApplicationFunctions app_functions = {};
 
+    /* INPUT */
+    RAWINPUTDEVICE mouse;
+    mouse.usUsagePage = 0x01;          // HID_USAGE_PAGE_GENERIC
+    mouse.usUsage = 0x02;              // HID_USAGE_GENERIC_MOUSE
+    mouse.dwFlags = RIDEV_NOLEGACY;    // adds mouse and also ignores legacy mouse messages
+    mouse.hwndTarget = hwnd;
+
+    if (RegisterRawInputDevices(&mouse, 1, sizeof(mouse)) == FALSE) {
+        exit(1);
+    }
+
+    UserInput inputs[2] = {};
+    u32 curr_input_idx = 0;
+    auto *current_input = &inputs[curr_input_idx];
+    auto *previous_input = &inputs[curr_input_idx + 1];
+
+    /* MAIN LOOP */
     auto is_running = true;
     while (is_running) {
         if (win32_should_reload_dll(&app_functions)) {
@@ -304,10 +379,16 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR szCmdLine,
         app_input.client_height = clientRect.bottom - clientRect.top;
         app_input.client_width = clientRect.right - clientRect.left;
 
-        win32_process_pending_messages(hwnd, is_running);
+        win32_process_pending_messages(hwnd, is_running, *current_input, *previous_input);
+        app_input.input = current_input;
         app_functions.update_and_render(&memory, &app_input);
 
         SwapBuffers(hdc);
+
+        curr_input_idx = curr_input_idx == 0 ? 1 : 0;
+        current_input = &inputs[curr_input_idx];
+        previous_input = &inputs[curr_input_idx == 0 ? 1 : 0];
+        current_input->frame_clear(*previous_input);
     }
 
     return 0;

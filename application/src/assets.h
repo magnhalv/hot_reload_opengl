@@ -4,16 +4,18 @@
 #include <glad/gl.h>
 #include <glm/glm.hpp>
 
-#include "types.h"
+#include <platform/types.h>
 
 const i32 MESH_MAX_VERTICES = 256;
 
 struct Mesh {
     GLuint vao;
-    GLuint position_vbo;
+    GLuint vertices_vbo;
     GLuint normals_vbo;
-    glm::vec3 positions[MESH_MAX_VERTICES]; // TODO: Make this dynamic
-    i32 num_positions;
+    GLuint mvp_vbo; // temp remove
+    GLuint light_vbo; // temp remove
+    glm::vec3 vertices[MESH_MAX_VERTICES]; // TODO: Make this dynamic
+    i32 num_vertices;
     glm::vec3 normals[MESH_MAX_VERTICES]; // TODO: Make this dynamic
     i32 num_normals;
 

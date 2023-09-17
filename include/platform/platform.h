@@ -9,7 +9,8 @@
 
 #include <glad/gl.h>
 
-#include "application/src/types.h"
+#include "types.h"
+#include "user_input.h"
 
 struct GLFunctions {
     PFNGLATTACHSHADERPROC attach_shader;
@@ -34,6 +35,16 @@ struct GLFunctions {
     PFNGLUNIFORM4FPROC uniform_4f;
     PFNGLUSEPROGRAMPROC use_program;
     PFNGLVIEWPORTPROC viewport;
+    PFNGLCREATEVERTEXARRAYSPROC create_vertex_arrays;
+    PFNGLVERTEXARRAYVERTEXBUFFERPROC vertex_array_vertex_buffer;
+    PFNGLENABLEVERTEXARRAYATTRIBPROC enable_vertex_array_attrib;
+    PFNGLVERTEXARRAYATTRIBFORMATPROC vertex_array_attrib_format;
+    PFNGLVERTEXARRAYATTRIBBINDINGPROC vertex_array_attrib_binding;
+    PFNGLNAMEDBUFFERSUBDATAPROC named_buffer_sub_data;
+    PFNGLPOLYGONMODEPROC polygon_mode;
+    PFNGLDRAWARRAYSPROC draw_arrays;
+    PFNGLBINDBUFFERBASEPROC bind_buffer_base;
+    PFNGLBINDVERTEXARRAYPROC bind_vertex_array;
 };
 
 struct ApplicationMemory {
@@ -46,10 +57,13 @@ struct ApplicationMemory {
 struct ApplicationInput {
     i32 client_width;
     i32 client_height;
+    f32 dt;
+    UserInput *input;
 };
 
-typedef void (__cdecl *UPDATE_AND_RENDER_PROC)(ApplicationMemory*, ApplicationInput*);
-typedef void (__cdecl *LOAD_GL_FUNCTIONS_PROC)(GLFunctions*);
+typedef void (__cdecl *UPDATE_AND_RENDER_PROC)(ApplicationMemory *, ApplicationInput *);
+
+typedef void (__cdecl *LOAD_GL_FUNCTIONS_PROC)(GLFunctions *);
 
 const u64 Permanent_Storage_Size = MegaBytes(10);
 const u64 Transient_Storage_Size = KiloBytes(1);

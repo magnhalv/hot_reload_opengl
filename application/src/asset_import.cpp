@@ -1,10 +1,11 @@
-#include "asset_import.h"
-
 #include <assimp/scene.h>
 #include <assimp/postprocess.h>
 #include <assimp/cimport.h>
 
-#include "types.h"
+#include <platform/types.h>
+
+#include "asset_import.h"
+#include "logger.h"
 
 static inline glm::mat4 convert_to_glm_format(const aiMatrix4x4& from)
 {
@@ -40,16 +41,15 @@ void import_mesh(const char *path, Mesh* mesh) {
             for (const auto idx: indices) {
                 assert(idx < ai_mesh->mNumVertices);
                 const auto &ai_vec = ai_mesh->mVertices[idx];
-                mesh->positions[f] = {ai_vec.x, ai_vec.y, ai_vec.z};
+                mesh->vertices[mesh->num_vertices++] = {ai_vec.x, ai_vec.y, ai_vec.z};
 
                 const auto &ai_norm = ai_mesh->mNormals[idx];
-                mesh->normals[f] = {ai_norm.x, ai_norm.y, ai_norm.z};
+                mesh->normals[mesh->num_normals++] = {ai_norm.x, ai_norm.y, ai_norm.z};
             }
-            mesh->num_positions++;
-            mesh->num_normals++;
         }
     }
-    printf("Converted from assimp to local representation.\n");
+    log_info("Converted from assimp to local representation.\n");
+    log_info("Num vertices %d", mesh->num_vertices);
     aiReleaseImport(scene);
 }
 

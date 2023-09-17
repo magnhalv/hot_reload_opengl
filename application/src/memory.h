@@ -1,7 +1,8 @@
 #ifndef HOT_RELOAD_OPENGL_MEMORY_H
 #define HOT_RELOAD_OPENGL_MEMORY_H
 
-#include "types.h"
+#include <platform/types.h>
+
 #include "logger.h"
 
 struct MemoryArena {
