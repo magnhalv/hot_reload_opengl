@@ -6,6 +6,7 @@
 
 #include <platform/platform.h>
 #include <platform/types.h>
+#include <cassert>
 
 struct ApplicationFunctions {
     HMODULE handle = nullptr;
@@ -15,6 +16,13 @@ struct ApplicationFunctions {
     FILETIME last_loaded_dll_write_time = {0, 0};
 };
 
+const u32 Max_Path_Length = 512;
+
+void path_to_wchar(const char *in, wchar_t destination[Max_Path_Length]) {
+    assert(strlen(in) < Max_Path_Length);
+    MultiByteToWideChar(CP_ACP, 0, in, -1, destination, Max_Path_Length / sizeof(destination[0]));
+}
+
 u64 win32_file_time_to_u64(const FILETIME &ft) {
     ULARGE_INTEGER uli;
     uli.LowPart = ft.dwLowDateTime;
@@ -22,14 +30,73 @@ u64 win32_file_time_to_u64(const FILETIME &ft) {
     return uli.QuadPart;
 }
 
-u64 win32_file_last_modified(const char* path) {
-    // TODO: Tighten this up. Need to check that the path is not longer than 512 etc. etc.
-    wchar_t wstr[512];
-    MultiByteToWideChar(CP_ACP, 0, path, -1, wstr, sizeof(wstr) / sizeof(wstr[0]));
-    LPCTSTR lpStr = reinterpret_cast<LPCTSTR>(wstr);
-
+u64 win32_file_size(const char *path) {
     WIN32_FILE_ATTRIBUTE_DATA file_info;
-    if (GetFileAttributesEx(path, GetFileExInfoStandard, (LPVOID) lpStr)) {
+    if (!GetFileAttributesExA(path, GetFileExInfoStandard, &file_info)) {
+        printf("PLATFORM: (win32_file_size): unable to get file attributes for: '%s'.\n", path);
+        return 0;
+    }
+
+    ULARGE_INTEGER size;
+    size.HighPart = file_info.nFileSizeHigh;
+    size.LowPart = file_info.nFileSizeLow;
+    return size.QuadPart;
+}
+
+/// \param path Path to the file
+/// \param read_buffer Buffer to put the content of the file into
+/// \param buffer_size Number of bytes one wish to read, but remember to add one for the zero terminating character.
+/// \return Success
+bool win32_read_file(const char *path, char *read_buffer, const u64 buffer_size) {
+    HANDLE file_handle;
+    file_handle = CreateFileA(path,         // file to open
+                              GENERIC_READ,          // open for reading
+                              FILE_SHARE_READ,       // share for reading
+                              nullptr,               // default security
+                              OPEN_EXISTING,         // existing file only
+                              FILE_ATTRIBUTE_NORMAL, // normal file
+                              nullptr);                 // no attr. template
+
+    if (file_handle == INVALID_HANDLE_VALUE) {
+        DWORD error = GetLastError();
+        printf("Failed to open file %s. Error code: %lu\n", path, error);
+        return false;
+    }
+
+    // Read one character less than the buffer size to save room for
+    // the terminating NULL character.
+    DWORD bytes_read = 0;
+    if (!ReadFile(file_handle, read_buffer, buffer_size - 1, &bytes_read, nullptr)) {
+        printf("Unable to read from file: %s\nGetLastError=%lu\n", path, GetLastError());
+        CloseHandle(file_handle);
+        return false;
+    }
+
+    assert(bytes_read == buffer_size - 1);
+    read_buffer[buffer_size] = '\0';
+    CloseHandle(file_handle);
+    return true;
+}
+
+void win32_debug_print_readable_timestamp(u64 timestamp) {
+    FILETIME file_time;
+    file_time.dwLowDateTime = timestamp & 0xFFFFFFFF;
+    file_time.dwHighDateTime = timestamp >> 32;
+
+    SYSTEMTIME system_time;
+    FILETIME local_file_time;
+
+    FileTimeToLocalFileTime(&file_time, &local_file_time);
+    FileTimeToSystemTime(&local_file_time, &system_time);
+
+    printf("%02d:%02d %02d/%02d/%04d",
+           system_time.wHour, system_time.wMinute,
+           system_time.wDay, system_time.wMonth, system_time.wYear);
+}
+
+u64 win32_file_last_modified(const char *path) {
+    WIN32_FILE_ATTRIBUTE_DATA file_info;
+    if (GetFileAttributesExA(path, GetFileExInfoStandard, &file_info)) {
         return win32_file_time_to_u64(file_info.ftLastWriteTime);
     } else {
         printf("PLATFORM (win32_file_last_modified): unable to get file attributes for: '%s'.\n", path);
@@ -101,7 +168,8 @@ void win32_load_dll(ApplicationFunctions *functions) {
         FreeLibrary(functions->handle);
     }
 
-    functions->load_platform_functions = (LOAD_PLATFORM_FUNCTIONS_PROC) GetProcAddress(functions->handle, "load_platform_functions");
+    functions->load_platform_functions = (LOAD_PLATFORM_FUNCTIONS_PROC) GetProcAddress(functions->handle,
+                                                                                       "load_platform_functions");
     if (functions->load_platform_functions == nullptr) {
         printf("Unable to load 'load_platform_functions' function in Application_in_use.dll\n");
         FreeLibrary(functions->handle);
@@ -397,9 +465,9 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR szCmdLine,
 
     Platform platform = {};
     platform.get_file_last_modified = &win32_file_last_modified;
-    win32_load_dll(&app_functions);
-    app_functions.load_gl_functions(&gl_funcs);
-    app_functions.load_platform_functions(&platform);
+    platform.get_file_size = &win32_file_size;
+    platform.read_file = &win32_read_file;
+    platform.debug_print_readable_timestamp = &win32_debug_print_readable_timestamp;
 
     /* MAIN LOOP */
     auto is_running = true;
@@ -408,6 +476,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR szCmdLine,
             printf("Hot reloading dll...\n");
             win32_load_dll(&app_functions);
             app_functions.load_gl_functions(&gl_funcs);
+            app_functions.load_platform_functions(&platform);
         }
 
         RECT clientRect;

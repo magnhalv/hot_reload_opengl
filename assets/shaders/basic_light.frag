@@ -10,7 +10,7 @@ layout (location=0) out vec4 out_FragColor;
 
 void main()
 {
-    vec3 color = vec3(0.5, 0.5, 0.5);
+    vec3 color = vec3(0.5, 0.5, 0.4);
     vec3 n = normalize(norm);
     vec3 l = normalize(omni_pos.xyz);
 

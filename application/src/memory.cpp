@@ -31,6 +31,6 @@ void* allocate_transient(u64 request_size) {
     void* result = transient->memory + transient->used;
     transient->used = request_size + transient->used;
 
-    log_info("Allocated %llu / %llu bytes.\n", transient->used, transient->size);
+    log_info("Allocated %llu / %llu bytes.", transient->used, transient->size);
     return result;
 }

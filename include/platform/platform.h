@@ -47,11 +47,19 @@ struct GLFunctions {
     PFNGLBINDVERTEXARRAYPROC bind_vertex_array;
 };
 
+const u32 Gl_Invalid_Id = 0;
+
 // Functions platform MUST support
 typedef u64 (*GET_FILE_LAST_MODIFIED_PROC)(const char *file_path);
+typedef bool (*READ_FILE_PROC)(const char *, char *, const u64);
+typedef u64 (*GET_FILE_SIZE_PROC)(const char *);
+typedef void (*DEBUG_PRINT_READABLE_TIMESTAMP_PROC) (u64);
 
 struct Platform {
     GET_FILE_LAST_MODIFIED_PROC get_file_last_modified;
+    READ_FILE_PROC read_file;
+    GET_FILE_SIZE_PROC get_file_size;
+    DEBUG_PRINT_READABLE_TIMESTAMP_PROC debug_print_readable_timestamp;
 };
 
 struct ApplicationMemory {
@@ -74,6 +82,6 @@ typedef void (__cdecl *LOAD_GL_FUNCTIONS_PROC)(GLFunctions *);
 typedef void (__cdecl *LOAD_PLATFORM_FUNCTIONS_PROC)(Platform *);
 
 const u64 Permanent_Storage_Size = MegaBytes(10);
-const u64 Transient_Storage_Size = KiloBytes(1);
+const u64 Transient_Storage_Size = MegaBytes(1);
 
 #endif //HOT_RELOAD_OPENGL_PLATFORM_H

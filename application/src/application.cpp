@@ -10,19 +10,21 @@ Platform *platform = nullptr;
 
 void update_and_render(ApplicationMemory *memory, ApplicationInput *app_input) {
     assert(sizeof(AppState) < memory->permanent_storage_size);
-    auto *state = (AppState*)memory->permanent_storage;
+    auto *state = (AppState *) memory->permanent_storage;
     const f32 ratio = static_cast<f32>(app_input->client_width) / static_cast<f32>(app_input->client_height);
 
     auto *mesh = &state->mesh;
-    
+
     [[unlikely]]
     if (!state->is_initialized) {
+        log_info("Initializing...");
         state->transient.size = memory->transient_storage_size;
         state->transient.used = 0;
-        state->transient.memory = (u8*)memory->transient_storage;
+        state->transient.memory = (u8 *) memory->transient_storage;
         set_transient_arena(&state->transient);
 
         import_mesh("assets/meshes/cube.glb", &state->mesh);
+
 
         state->program.initialize(R"(.\assets\shaders\mesh.vert)", R"(.\assets\shaders\basic_light.frag)");
         state->program.useProgram();
@@ -65,12 +67,14 @@ void update_and_render(ApplicationMemory *memory, ApplicationInput *app_input) {
         gl->named_buffer_storage(mesh->light_vbo, sizeof(glm::vec4), nullptr, GL_DYNAMIC_STORAGE_BIT);
         gl->bind_buffer_base(GL_UNIFORM_BUFFER, 1, mesh->light_vbo);
 
-        gl->clear_color(0.0f, 0.0f, 0.0f, 0.0f);
         state->is_initialized = true;
     }
-    printf("Last modified: %llu\n", platform->get_file_last_modified(R"(.\assets\shaders\basic_light.frag)"));
+    state->program.relink_if_changed();
+    state->program.useProgram();
+    gl->clear_color(1.0f, 0.6f, 0.0f, 0.0f);
 
-    state->camera.update_cursor(static_cast<f32>(app_input->input->mouse.dx), static_cast<f32>(app_input->input->mouse.dy));
+    state->camera.update_cursor(static_cast<f32>(app_input->input->mouse.dx),
+                                static_cast<f32>(app_input->input->mouse.dy));
     state->camera.update_keyboard(*app_input->input);
 
     state->program.useProgram();
@@ -91,8 +95,7 @@ void update_and_render(ApplicationMemory *memory, ApplicationInput *app_input) {
 
     GLenum err;
     bool found_error = false;
-    while((err = gl->get_error()) != GL_NO_ERROR)
-    {
+    while ((err = gl->get_error()) != GL_NO_ERROR) {
         printf("OpenGL Error %d\n", err);
         found_error = true;
     }
@@ -100,10 +103,11 @@ void update_and_render(ApplicationMemory *memory, ApplicationInput *app_input) {
         exit(1);
     }
 
+    // TODO: Gotta set this on hot reload
     clear_transient();
 }
 
-void load_gl_functions(GLFunctions * in_gl) {
+void load_gl_functions(GLFunctions *in_gl) {
     gl = in_gl;
 }
 

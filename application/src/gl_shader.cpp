@@ -6,17 +6,17 @@
 #include "application.h"
 #include "gl_shader.h"
 
-void print_shader_source(const char* text)
+auto print_shader_source(const char* text) -> void
 {
     int line = 1;
 
-    printf("\n(%3i) ", line);
+    printf("\n%3i: ", line);
 
     while (text && *text++)
     {
         if (*text == '\n')
         {
-            printf("\n(%3i) ", ++line);
+            printf("\n%3i: ", ++line);
         }
         else if (*text == '\r')
         {
@@ -30,13 +30,13 @@ void print_shader_source(const char* text)
     printf("\n");
 }
 
-char* read_shader_file(const char* fileName)
+auto read_shader_file(const char* fileName) -> char*
 {
     FILE* file = fopen(fileName, "r");
 
     if (!file)
     {
-        printf("I/O error. Cannot open shader file '%s'\n", fileName);
+        log_error("I/O error. Cannot open shader file '%s'\n", fileName);
         return {};
     }
     // TODO: Use platform read file function
@@ -79,7 +79,7 @@ char* read_shader_file(const char* fileName)
     return code;*/
 }
 
-u32 compile_shader(const char* path)
+auto compile_shader(const char* path) -> u32
 {
     auto type = GLShaderType_from_file_name(path);
     auto text = read_shader_file(path);
@@ -93,14 +93,14 @@ u32 compile_shader(const char* path)
 
     if (length)
     {
-        printf("%s (File: %s)\n", buffer, path);
         print_shader_source(text);
-        assert(false);
+        log_error("%sFile: %s\n", buffer, path);
+        return Gl_Invalid_Id;
     }
     return handle;
 }
 
-void print_program_info_log(GLuint handle)
+auto print_program_info_log(GLuint handle) -> void
 {
     char buffer[8192];
     GLsizei length = 0;
@@ -112,25 +112,77 @@ void print_program_info_log(GLuint handle)
     }
 }
 
-void GLShaderProgram::initialize(const char *a_path, const char *b_path)
+auto create_program(const char *vertex_path, const char *fragment_path) -> u32 {
+    auto handle = gl->create_program();
+    const auto vertex_handle = compile_shader(vertex_path);
+    if (vertex_handle == Gl_Invalid_Id) {
+        return Gl_Invalid_Id;
+    }
+
+    const auto fragment_handle = compile_shader(fragment_path);
+    if (fragment_handle == Gl_Invalid_Id) {
+        return Gl_Invalid_Id;
+    }
+
+    const auto vertex_length = strlen(vertex_path);
+    const auto fragment_length = strlen(fragment_path);
+
+    assert(vertex_length < Shader_Path_Max_Length);
+    assert(fragment_length < Shader_Path_Max_Length);
+
+    gl->attach_shader(handle, vertex_handle);
+    gl->attach_shader(handle, fragment_handle);
+    // TODO: Check for linking errors
+    gl->link_program(handle);
+
+    char buffer[8192];
+    GLsizei length = 0;
+    gl->get_program_info_log(handle, sizeof(buffer), &length, buffer);
+    if (length)
+    {
+        gl->delete_program(handle);
+        log_error("Failed to link shader program.\n%s\n", buffer);
+        return Gl_Invalid_Id;
+    }
+
+    return handle;
+}
+
+auto GLShaderProgram::initialize(const char *vertex_path, const char *fragment_path) -> bool
 {
-    handle_ = gl->create_program();
-    const auto a = compile_shader(a_path);
-    const auto b = compile_shader(b_path);
+    const auto vertex_length = strlen(vertex_path);
+    const auto fragment_length = strlen(fragment_path);
 
-    const auto a_length = strlen(a_path);
-    const auto b_length = strlen(b_path);
+    assert(vertex_length < Shader_Path_Max_Length);
+    assert(fragment_length < Shader_Path_Max_Length);
 
-    assert(a_length < Shader_Path_Max_Length);
-    assert(b_length < Shader_Path_Max_Length);
+    const auto handle = create_program(vertex_path, fragment_path);
 
-    strcpy_s(_a_path, Shader_Path_Max_Length, a_path);
-    strcpy_s(_b_path, Shader_Path_Max_Length, b_path);
+    if (handle == Gl_Invalid_Id) {
+        log_error("Failed to create shader program.");
+        return false;
+    }
 
-    gl->attach_shader(handle_, a);
-    gl->attach_shader(handle_, b);
-    gl->link_program(handle_);
-    print_program_info_log(handle_);
+    handle_ = handle;
+    strcpy_s(vertex.path, Shader_Path_Max_Length, vertex_path);
+    strcpy_s(fragment.path, Shader_Path_Max_Length, fragment_path);
+    vertex.last_modified = platform->get_file_last_modified(vertex_path);
+    fragment.last_modified = platform->get_file_last_modified(fragment_path);
+    return true;
+}
+
+auto GLShaderProgram::relink_if_changed() -> void {
+    auto vertex_last_modified = platform->get_file_last_modified(vertex.path);
+    auto fragment_last_modified = platform->get_file_last_modified(fragment.path);
+    if (vertex_last_modified > vertex.last_modified || fragment_last_modified > fragment.last_modified) {
+        const auto new_handle = create_program(vertex.path, fragment.path);
+        if (new_handle != Gl_Invalid_Id) {
+            gl->delete_program(handle_);
+            handle_ = new_handle;
+        }
+        vertex.last_modified = vertex_last_modified;
+        fragment.last_modified = fragment_last_modified;
+    }
 }
 
 
@@ -171,11 +223,9 @@ int ends_with(const char* s, const char* part)
 GLenum GLShaderType_from_file_name(const char* file_name)
 {
     if (ends_with(file_name, ".vert")) {
-        printf("Vert\n");
         return GL_VERTEX_SHADER;
     }
     if (ends_with(file_name, ".frag")) {
-        printf("Frag\n");
         return GL_FRAGMENT_SHADER;
     }
     if (ends_with(file_name, ".geom"))

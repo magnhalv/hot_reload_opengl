@@ -48,7 +48,7 @@ void import_mesh(const char *path, Mesh* mesh) {
             }
         }
     }
-    log_info("Converted from assimp to local representation.\n");
+    log_info("Converted from assimp to local representation.");
     log_info("Num vertices %d", mesh->num_vertices);
     aiReleaseImport(scene);
 }

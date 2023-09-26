@@ -10,20 +10,26 @@
 
 const i32 Shader_Path_Max_Length = 512;
 
+struct Shader {
+    char path[Shader_Path_Max_Length];
+    TimeStamp last_modified;
+};
+
 struct GLShaderProgram
 {
 public:
-    void initialize(const char *a_path, const char *b_path);
-    void useProgram() const;
-    void free();
+    auto initialize(const char *vertex_path, const char *fragment_path) -> bool;
+    auto useProgram() const -> void;
+    auto free() -> void;
     [[nodiscard]] GLuint getHandle() const { return handle_; }
 
-    void set_uniform(const char *name, const glm::vec4 &vec) const;
-
+    auto set_uniform(const char *name, const glm::vec4 &vec) const -> void;
+    auto relink_if_changed() -> void;
 private:
-    char _a_path[Shader_Path_Max_Length];
-    char _b_path[Shader_Path_Max_Length];
+    Shader vertex;
+    Shader fragment;
     GLuint handle_;
+
 };
 
 class GLBuffer
