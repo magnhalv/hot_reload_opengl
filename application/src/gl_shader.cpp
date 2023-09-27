@@ -197,24 +197,6 @@ void GLShaderProgram::free()
     handle_ = 0;
 }
 
-void GLShaderProgram::useProgram() const
-{
-    assert(handle_ != 0);
-    gl->use_program(handle_);
-}
-
-GLBuffer::GLBuffer(GLsizeiptr size, const void* data, GLbitfield flags)
-{
-    gl->create_buffers(1, &handle_);
-    gl->named_buffer_storage(handle_, size, data, flags);
-}
-
-GLBuffer::~GLBuffer()
-{
-    assert(handle_ != 0);
-    gl->delete_buffers(1, &handle_);
-}
-
 int ends_with(const char* s, const char* part)
 {
     return (strstr( s, part ) - s) == (strlen( s ) - strlen( part ));
@@ -243,4 +225,56 @@ GLenum GLShaderType_from_file_name(const char* file_name)
     assert(false);
 
     return 0;
+}
+
+void GLShaderProgram::useProgram() const
+{
+    assert(handle_ != 0);
+    gl->use_program(handle_);
+}
+
+auto GLVao::add_buffer(GLBuffer buffer) -> bool {
+    if (num_buffers == Max_Buffers) {
+        return false;
+    }
+    buffers[num_buffers++] = buffer;
+    return true;
+}
+
+auto GLVao::add_uniform_buffer(GLUniformBuffer uniform_buffer) -> bool {
+    if (num_uniform_buffers == Max_Buffers) {
+        return false;
+    }
+    uniform_buffers[num_uniform_buffers++] = uniform_buffer;
+    return true;
+}
+
+auto GLVao::load_buffers() -> void {
+    for (i32 i = 0; i < num_buffers; i++) {
+        auto &buffer = buffers[i];
+        gl->create_buffers(1, &buffer.handle);
+        // Populates the buffer
+        gl->named_buffer_storage(buffer.handle, buffer.size, buffer.data, 0);
+        // TODO: handle offset (the 0)
+        gl->vertex_array_vertex_buffer(handle, buffer.index, buffer.handle, 0, buffer.stride);
+        // Enables vertex attribute 1
+        gl->enable_vertex_array_attrib(handle, buffer.index);
+        gl->vertex_array_attrib_format(handle, buffer.index, 3, GL_FLOAT, GL_FALSE, 0);
+        // Makes vertex attribute available in shader layout=buffer.index
+        gl->vertex_array_attrib_binding(handle, buffer.index, buffer.index);
+    }
+
+    for (i32 i = 0; i < num_uniform_buffers; i++) {
+        auto u_buf = uniform_buffers[i];
+        gl->create_buffers(1, &u_buf.handle);
+        gl->named_buffer_storage(u_buf.handle, u_buf.size, nullptr, GL_DYNAMIC_STORAGE_BIT);
+        gl->bind_buffer_base(GL_UNIFORM_BUFFER, u_buf.index, u_buf.handle);
+    }
+}
+
+auto GLVao::update_dynamic_buffers() -> void {
+    for (i32 i = 0; i < num_uniform_buffers; i++) {
+        auto u_buf = uniform_buffers[i];
+        gl->named_buffer_sub_data(u_buf.handle, 0, u_buf.size, u_buf.data);
+    }
 }

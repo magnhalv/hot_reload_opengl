@@ -32,16 +32,37 @@ private:
 
 };
 
-class GLBuffer
-{
-public:
-    GLBuffer(GLsizeiptr size, const void* data, GLbitfield flags);
-    ~GLBuffer();
+const u32 Max_Buffers = 2;
 
-    [[nodiscard]] GLuint getHandle() const { return handle_; }
+struct GLBuffer {
+    u32 handle;
+    void *data;
+    u32 index;
+    i32 stride;
+    GLsizeiptr size;
+    GLbitfield flags;
+};
 
-private:
-    GLuint handle_;
+struct GLUniformBuffer {
+    u32 handle;
+    void *data;
+    u32 index;
+    i32 stride;
+    GLsizeiptr size;
+    GLbitfield flags;
+};
+
+struct GLVao {
+    u32 handle;
+    GLBuffer buffers[Max_Buffers];
+    u32 num_buffers;
+    GLUniformBuffer uniform_buffers[Max_Buffers];
+    u32 num_uniform_buffers;
+
+    auto add_buffer(GLBuffer buffer) -> bool;
+    auto add_uniform_buffer(GLUniformBuffer uniform_buffer) -> bool;
+    auto load_buffers() -> void;
+    auto update_dynamic_buffers() -> void;
 };
 
 GLenum GLShaderType_from_file_name(const char* file_name);
