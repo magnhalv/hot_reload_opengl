@@ -6,23 +6,16 @@
 #include "application.h"
 #include "gl_shader.h"
 
-auto print_shader_source(const char* text) -> void
-{
+auto print_shader_source(const char *text) -> void {
     int line = 1;
 
     printf("\n%3i: ", line);
 
-    while (text && *text++)
-    {
-        if (*text == '\n')
-        {
+    while (text && *text++) {
+        if (*text == '\n') {
             printf("\n%3i: ", ++line);
-        }
-        else if (*text == '\r')
-        {
-        }
-        else
-        {
+        } else if (*text == '\r') {
+        } else {
             printf("%c", *text);
         }
     }
@@ -30,12 +23,10 @@ auto print_shader_source(const char* text) -> void
     printf("\n");
 }
 
-auto read_shader_file(const char* fileName) -> char*
-{
-    FILE* file = fopen(fileName, "r");
+auto read_shader_file(const char *fileName) -> char * {
+    FILE *file = fopen(fileName, "r");
 
-    if (!file)
-    {
+    if (!file) {
         log_error("I/O error. Cannot open shader file '%s'\n", fileName);
         return {};
     }
@@ -44,16 +35,15 @@ auto read_shader_file(const char* fileName) -> char*
     const auto bytes_in_file = ftell(file);
     fseek(file, 0L, SEEK_SET);
 
-    char* buffer = (char*)allocate_transient(bytes_in_file + 1);
+    char *buffer = (char *) allocate_transient(bytes_in_file + 1);
     const size_t bytes_read = fread(buffer, 1, bytes_in_file, file);
     fclose(file);
 
     buffer[bytes_read] = 0;
 
-    static constexpr unsigned char BOM[] = { 0xEF, 0xBB, 0xBF };
+    static constexpr unsigned char BOM[] = {0xEF, 0xBB, 0xBF};
 
-    if (bytes_read > 3)
-    {
+    if (bytes_read > 3) {
         if (!memcmp(buffer, BOM, 3))
             memset(buffer, ' ', 3);
     }
@@ -79,8 +69,7 @@ auto read_shader_file(const char* fileName) -> char*
     return code;*/
 }
 
-auto compile_shader(const char* path) -> u32
-{
+auto compile_shader(const char *path) -> u32 {
     auto type = GLShaderType_from_file_name(path);
     auto text = read_shader_file(path);
     auto handle = gl->create_shader(type);
@@ -91,8 +80,7 @@ auto compile_shader(const char* path) -> u32
     GLsizei length = 0;
     gl->get_shader_info_log(handle, sizeof(buffer), &length, buffer);
 
-    if (length)
-    {
+    if (length) {
         print_shader_source(text);
         log_error("%sFile: %s\n", buffer, path);
         return Gl_Invalid_Id;
@@ -100,13 +88,11 @@ auto compile_shader(const char* path) -> u32
     return handle;
 }
 
-auto print_program_info_log(GLuint handle) -> void
-{
+auto print_program_info_log(GLuint handle) -> void {
     char buffer[8192];
     GLsizei length = 0;
     gl->get_program_info_log(handle, sizeof(buffer), &length, buffer);
-    if (length)
-    {
+    if (length) {
         printf("%s\n", buffer);
         assert(false);
     }
@@ -138,8 +124,7 @@ auto create_program(const char *vertex_path, const char *fragment_path) -> u32 {
     char buffer[8192];
     GLsizei length = 0;
     gl->get_program_info_log(handle, sizeof(buffer), &length, buffer);
-    if (length)
-    {
+    if (length) {
         gl->delete_program(handle);
         log_error("Failed to link shader program.\n%s\n", buffer);
         return Gl_Invalid_Id;
@@ -148,8 +133,7 @@ auto create_program(const char *vertex_path, const char *fragment_path) -> u32 {
     return handle;
 }
 
-auto GLShaderProgram::initialize(const char *vertex_path, const char *fragment_path) -> bool
-{
+auto GLShaderProgram::initialize(const char *vertex_path, const char *fragment_path) -> bool {
     const auto vertex_length = strlen(vertex_path);
     const auto fragment_length = strlen(fragment_path);
 
@@ -191,19 +175,16 @@ void GLShaderProgram::set_uniform(const char *name, const glm::vec4 &vec) const 
     gl->uniform_4f(id, vec.x, vec.y, vec.z, vec.w);
 }
 
-void GLShaderProgram::free()
-{
+void GLShaderProgram::free() {
     gl->delete_program(handle_);
     handle_ = 0;
 }
 
-int ends_with(const char* s, const char* part)
-{
-    return (strstr( s, part ) - s) == (strlen( s ) - strlen( part ));
+int ends_with(const char *s, const char *part) {
+    return (strstr(s, part) - s) == (strlen(s) - strlen(part));
 }
 
-GLenum GLShaderType_from_file_name(const char* file_name)
-{
+GLenum GLShaderType_from_file_name(const char *file_name) {
     if (ends_with(file_name, ".vert")) {
         return GL_VERTEX_SHADER;
     }
@@ -227,25 +208,46 @@ GLenum GLShaderType_from_file_name(const char* file_name)
     return 0;
 }
 
-void GLShaderProgram::useProgram() const
-{
+
+void GLShaderProgram::useProgram() const {
     assert(handle_ != 0);
     gl->use_program(handle_);
 }
 
-auto GLVao::add_buffer(GLBuffer buffer) -> bool {
+auto GLVao::init() -> void {
+    gl->create_vertex_arrays(1, &handle);
+}
+
+auto GLVao::destroy() -> void {
+    gl->delete_vertex_array(1, &handle);
+}
+
+auto GLVao::bind() -> void {
+    gl->bind_vertex_array(handle);
+}
+
+auto GLVao::add_buffer(void *data, GLsizeiptr size, u32 index, i32 stride, GLbitfield flags) -> bool {
     if (num_buffers == Max_Buffers) {
         return false;
     }
-    buffers[num_buffers++] = buffer;
+    auto &buf = buffers[num_buffers++];
+    buf.data = data;
+    buf.size = size;
+    buf.index = index;
+    buf.stride = stride;
+    buf.flags = flags;
     return true;
 }
 
-auto GLVao::add_uniform_buffer(GLUniformBuffer uniform_buffer) -> bool {
+auto GLVao::add_uniform_buffer(void *data, GLsizeiptr size, u32 index, GLbitfield flags) -> bool {
     if (num_uniform_buffers == Max_Buffers) {
         return false;
     }
-    uniform_buffers[num_uniform_buffers++] = uniform_buffer;
+    auto &buf = uniform_buffers[num_uniform_buffers++];
+    buf.data = data;
+    buf.size = size;
+    buf.index = index;
+    buf.flags = flags;
     return true;
 }
 
@@ -265,7 +267,7 @@ auto GLVao::load_buffers() -> void {
     }
 
     for (i32 i = 0; i < num_uniform_buffers; i++) {
-        auto u_buf = uniform_buffers[i];
+        auto &u_buf = uniform_buffers[i];
         gl->create_buffers(1, &u_buf.handle);
         gl->named_buffer_storage(u_buf.handle, u_buf.size, nullptr, GL_DYNAMIC_STORAGE_BIT);
         gl->bind_buffer_base(GL_UNIFORM_BUFFER, u_buf.index, u_buf.handle);

@@ -3,10 +3,10 @@ cmake_minimum_required(VERSION 3.10)   # Adjust according to your installed vers
 project(Application)
 
 add_library(Application SHARED
-        src/application.cpp
-        src/asset_import.cpp
-        src/gl_shader.cpp
-        src/memory.cpp
+        application/application.cpp
+        application/asset_import.cpp
+        application/gl_shader.cpp
+        application/memory.cpp
         )
 
 include_directories(../shared_deps/glad/include)
@@ -26,9 +26,11 @@ set(BUILD_SHARED_LIBS OFF CACHE BOOL "")
 include_directories(deps/src/assimp/include)
 add_subdirectory(deps/src/assimp)
 
+add_subdirectory(math)
+
 # END ASSIMP
 
-target_link_libraries(Application assimp)
+target_link_libraries(Application assimp math)
 set_target_properties(Application PROPERTIES DEBUG_POSTFIX "")
 
 set_target_properties(Application PROPERTIES

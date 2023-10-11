@@ -369,16 +369,22 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR szCmdLine,
         exit(1);
     } else {
         gl_funcs.attach_shader = glAttachShader;
+        gl_funcs.bind_buffer_base = glBindBufferBase;
+        gl_funcs.bind_vertex_array = glBindVertexArray;
         gl_funcs.clear = glClear;
         gl_funcs.clear_color = glClearColor;
         gl_funcs.compile_shader = glCompileShader;
         gl_funcs.create_buffers = glCreateBuffers;
         gl_funcs.create_program = glCreateProgram;
         gl_funcs.create_shader = glCreateShader;
+        gl_funcs.create_vertex_arrays = glCreateVertexArrays;
         gl_funcs.delete_buffers = glDeleteBuffers;
         gl_funcs.delete_program = glDeleteProgram;
         gl_funcs.delete_shader = glDeleteShader;
+        gl_funcs.delete_vertex_array = glDeleteVertexArrays;
+        gl_funcs.draw_arrays = glDrawArrays;
         gl_funcs.enable = glEnable;
+        gl_funcs.enable_vertex_array_attrib = glEnableVertexArrayAttrib;
         gl_funcs.finish = glFinish;
         gl_funcs.get_error = glGetError;
         gl_funcs.get_program_info_log = glGetProgramInfoLog;
@@ -386,20 +392,15 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR szCmdLine,
         gl_funcs.get_uniform_location = glGetUniformLocation;
         gl_funcs.link_program = glLinkProgram;
         gl_funcs.named_buffer_storage = glNamedBufferStorage;
+        gl_funcs.named_buffer_sub_data = glNamedBufferSubData;
+        gl_funcs.polygon_mode = glPolygonMode;
         gl_funcs.shader_source = glShaderSource;
         gl_funcs.uniform_4f = glUniform4f;
         gl_funcs.use_program = glUseProgram;
-        gl_funcs.viewport = glViewport;
-        gl_funcs.create_vertex_arrays = glCreateVertexArrays;
-        gl_funcs.vertex_array_vertex_buffer = glVertexArrayVertexBuffer;
-        gl_funcs.enable_vertex_array_attrib = glEnableVertexArrayAttrib;
-        gl_funcs.vertex_array_attrib_format = glVertexArrayAttribFormat;
         gl_funcs.vertex_array_attrib_binding = glVertexArrayAttribBinding;
-        gl_funcs.named_buffer_sub_data = glNamedBufferSubData;
-        gl_funcs.polygon_mode = glPolygonMode;
-        gl_funcs.draw_arrays = glDrawArrays;
-        gl_funcs.bind_buffer_base = glBindBufferBase;
-        gl_funcs.bind_vertex_array = glBindVertexArray;
+        gl_funcs.vertex_array_attrib_format = glVertexArrayAttribFormat;
+        gl_funcs.vertex_array_vertex_buffer = glVertexArrayVertexBuffer;
+        gl_funcs.viewport = glViewport;
     }
 
     auto _wglGetExtensionsStringEXT = (PFNWGLGETEXTENSIONSSTRINGEXTPROC) wglGetProcAddress(
@@ -471,7 +472,13 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR szCmdLine,
 
     /* MAIN LOOP */
     auto is_running = true;
+
+    DWORD last_tick = GetTickCount();
     while (is_running) {
+        DWORD this_tick = GetTickCount();
+        app_input.dt = float(this_tick - last_tick) * 0.001f; // to seconds
+        last_tick = this_tick;
+
         if (win32_should_reload_dll(&app_functions)) {
             printf("Hot reloading dll...\n");
             win32_load_dll(&app_functions);

@@ -1,9 +1,12 @@
 #include <cstdio>
 #include <glad/gl.h>
 
+#include <math/vec3.h>
+
 #include "application.h"
 #include "gl_shader.h"
 #include "asset_import.h"
+#include "player.h"
 
 GLFunctions *gl = nullptr;
 Platform *platform = nullptr;
@@ -28,67 +31,49 @@ void update_and_render(ApplicationMemory *memory, ApplicationInput *app_input) {
 
         state->program.initialize(R"(.\assets\shaders\mesh.vert)", R"(.\assets\shaders\basic_light.frag)");
         state->program.useProgram();
-        state->camera.init(-90.0f, 0.0f, glm::vec3(0.0f, 1.0f, 5.0f));
+
+        state->camera.init(-90.0f, 0.0f, vec3(2.0f, 5.0f, 10.0f));
 
         // TODO: Abstract way meshes
         auto data_size = static_cast<GLsizeiptr>(sizeof(glm::vec3) * mesh->num_vertices); // NOLINT
         assert(mesh->num_vertices == mesh->num_normals);
-        gl->create_vertex_arrays(1, &mesh->vao);
-        gl->bind_vertex_array(mesh->vao);
-
-        gl->create_buffers(1, &mesh->vertices_vbo);
-        // Populates the buffer
-        gl->named_buffer_storage(mesh->vertices_vbo, data_size, mesh->vertices, 0);
-        // Binds the buffer to binding point 0 in the vao
-        gl->vertex_array_vertex_buffer(mesh->vao, 0, mesh->vertices_vbo, 0, sizeof(glm::vec3));
-        // Enables vertex attribute 0
-        gl->enable_vertex_array_attrib(mesh->vao, 0);
-        gl->vertex_array_attrib_format(mesh->vao, 0, 3, GL_FLOAT, GL_FALSE, 0);
-        // Makes vertex attribute available in shader layout=0
-        gl->vertex_array_attrib_binding(mesh->vao, 0, 0);
-
-        gl->create_buffers(1, &mesh->normals_vbo);
-        // Populates the buffer
-        gl->named_buffer_storage(mesh->normals_vbo, data_size, mesh->normals, 0);
-        // Binds the buffer to binding point 1 in the vao
-        gl->vertex_array_vertex_buffer(mesh->vao, 1, mesh->normals_vbo, 0, sizeof(glm::vec3));
-        // Enables vertex attribute 1
-        gl->enable_vertex_array_attrib(mesh->vao, 1);
-        gl->vertex_array_attrib_format(mesh->vao, 1, 3, GL_FLOAT, GL_FALSE, 0);
-        // Makes vertex attribute available in shader layout=1
-        gl->vertex_array_attrib_binding(mesh->vao, 1, 1);
-
-        gl->create_buffers(1, &mesh->mvp_vbo);
-        gl->named_buffer_storage(mesh->mvp_vbo, sizeof(glm::mat4), nullptr, GL_DYNAMIC_STORAGE_BIT);
-        gl->bind_buffer_base(GL_UNIFORM_BUFFER, 0, mesh->mvp_vbo);
 
 
-        gl->create_buffers(1, &mesh->light_vbo);
-        gl->named_buffer_storage(mesh->light_vbo, sizeof(glm::vec4), nullptr, GL_DYNAMIC_STORAGE_BIT);
-        gl->bind_buffer_base(GL_UNIFORM_BUFFER, 1, mesh->light_vbo);
+        auto &vao = state->vao;
+        vao.init();
+        vao.bind();
+
+        vao.add_buffer(mesh->vertices, data_size, 0, sizeof(vec3), 0);
+        vao.add_buffer(mesh->normals, data_size, 1, sizeof(vec3), 0);
+        vao.add_uniform_buffer(&state->mvp, sizeof(glm::mat4), 0, 0);
+        vao.add_uniform_buffer(&state->light, sizeof(vec4), 1, 0);
+        vao.load_buffers();
 
         state->is_initialized = true;
     }
     state->program.relink_if_changed();
     state->program.useProgram();
+
     gl->clear_color(1.0f, 0.6f, 0.0f, 0.0f);
 
     state->camera.update_cursor(static_cast<f32>(app_input->input->mouse.dx),
                                 static_cast<f32>(app_input->input->mouse.dy));
-    state->camera.update_keyboard(*app_input->input);
+    //state->camera.update_keyboard(*app_input->input);
+    update_player(state, app_input);
 
-    state->program.useProgram();
     gl->viewport(0, 0, app_input->client_width, app_input->client_height);
     gl->clear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
     gl->enable(GL_DEPTH_TEST);
 
-    const glm::mat4 m = state->camera.get_view();
-    const glm::mat4 p = glm::perspective(45.0f, ratio, 0.1f, 1000.0f);
-    glm::mat4 mvp = p * m;
-    gl->named_buffer_sub_data(mesh->mvp_vbo, 0, sizeof(glm::mat4), &mvp);
+    const mat4 m = state->mesh.transform.to_mat4();
+    const mat4 v = state->camera.get_view();
+    const mat4 p = perspective(45.0f, ratio, 0.1f, 1000.0f);
 
-    auto light =glm::vec4(0.0f, 1.0f, 4.0f, 0.0f);
-    gl->named_buffer_sub_data(mesh->light_vbo, 0, sizeof(glm::vec4), &light);
+    state->mvp = p * v * m;
+
+    state->light = vec4(0.0f, 1.0f, 4.0f, 0.0f);
+
+    state->vao.update_dynamic_buffers();
 
     gl->polygon_mode(GL_FRONT_AND_BACK, GL_FILL);
     gl->draw_arrays(GL_TRIANGLES, 0, mesh->num_vertices);

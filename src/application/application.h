@@ -3,6 +3,9 @@
 
 #include <platform/platform.h>
 #include <platform/types.h>
+#include <math/vec4.h>
+#include <math/mat4.h>
+
 #include "assets.h"
 #include "memory.h"
 #include "camera.h"
@@ -14,6 +17,11 @@ struct AppState {
     Camera camera;
     GLShaderProgram program;
     MemoryArena transient;
+    GLVao vao;
+
+    // TODO: Should this be global state? Might need computable buffers
+    vec4 light;
+    mat4 mvp;
 };
 
 extern GLFunctions *gl;

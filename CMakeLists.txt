@@ -26,4 +26,4 @@ target_link_libraries(hot_reload_opengl ${OPENGL_gl_LIBRARY} )
 
 # This needs to be after the linking of opengl, otherwise we get linking issues against glad
 # Something related to assimp.
-add_subdirectory(application)
+add_subdirectory(src)

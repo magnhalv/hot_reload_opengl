@@ -47,7 +47,6 @@ struct GLUniformBuffer {
     u32 handle;
     void *data;
     u32 index;
-    i32 stride;
     GLsizeiptr size;
     GLbitfield flags;
 };
@@ -59,8 +58,12 @@ struct GLVao {
     GLUniformBuffer uniform_buffers[Max_Buffers];
     u32 num_uniform_buffers;
 
-    auto add_buffer(GLBuffer buffer) -> bool;
-    auto add_uniform_buffer(GLUniformBuffer uniform_buffer) -> bool;
+    auto init() -> void;
+    auto destroy() -> void;
+    auto bind() -> void;
+
+    [[nodiscard]] auto add_buffer(void *data, GLsizeiptr size, u32 index, i32 stride, GLbitfield flags) -> bool;
+    [[nodiscard]] auto add_uniform_buffer(void *data, GLsizeiptr size, u32 index, GLbitfield flags) -> bool;
     auto load_buffers() -> void;
     auto update_dynamic_buffers() -> void;
 };

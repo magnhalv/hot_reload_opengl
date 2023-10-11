@@ -3,6 +3,7 @@
 #include <assimp/cimport.h>
 
 #include <platform/types.h>
+#include <glm/glm.hpp>
 
 #include "asset_import.h"
 #include "logger.h"
@@ -47,6 +48,7 @@ void import_mesh(const char *path, Mesh* mesh) {
                 mesh->normals[mesh->num_normals++] = {ai_norm.x, ai_norm.y, ai_norm.z};
             }
         }
+        mesh->transform = Transform();
     }
     log_info("Converted from assimp to local representation.");
     log_info("Num vertices %d", mesh->num_vertices);

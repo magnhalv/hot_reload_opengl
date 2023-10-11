@@ -14,16 +14,22 @@
 
 struct GLFunctions {
     PFNGLATTACHSHADERPROC attach_shader;
+    PFNGLBINDBUFFERBASEPROC bind_buffer_base;
+    PFNGLBINDVERTEXARRAYPROC bind_vertex_array;
     PFNGLCLEARCOLORPROC clear_color;
     PFNGLCLEARPROC clear;
     PFNGLCOMPILESHADERPROC compile_shader;
     PFNGLCREATEBUFFERSPROC create_buffers;
     PFNGLCREATEPROGRAMPROC create_program;
     PFNGLCREATESHADERPROC create_shader;
+    PFNGLCREATEVERTEXARRAYSPROC create_vertex_arrays;
     PFNGLDELETEBUFFERSPROC delete_buffers;
     PFNGLDELETEPROGRAMPROC delete_program;
     PFNGLDELETESHADERPROC delete_shader;
+    PFNGLDELETEVERTEXARRAYSPROC delete_vertex_array;
+    PFNGLDRAWARRAYSPROC draw_arrays;
     PFNGLENABLEPROC enable;
+    PFNGLENABLEVERTEXARRAYATTRIBPROC enable_vertex_array_attrib;
     PFNGLFINISHPROC finish;
     PFNGLGETERRORPROC get_error;
     PFNGLGETPROGRAMINFOLOGPROC get_program_info_log;
@@ -31,20 +37,15 @@ struct GLFunctions {
     PFNGLGETUNIFORMLOCATIONPROC get_uniform_location;
     PFNGLLINKPROGRAMPROC link_program;
     PFNGLNAMEDBUFFERSTORAGEPROC named_buffer_storage;
+    PFNGLNAMEDBUFFERSUBDATAPROC named_buffer_sub_data;
+    PFNGLPOLYGONMODEPROC polygon_mode;
     PFNGLSHADERSOURCEPROC shader_source;
     PFNGLUNIFORM4FPROC uniform_4f;
     PFNGLUSEPROGRAMPROC use_program;
-    PFNGLVIEWPORTPROC viewport;
-    PFNGLCREATEVERTEXARRAYSPROC create_vertex_arrays;
-    PFNGLVERTEXARRAYVERTEXBUFFERPROC vertex_array_vertex_buffer;
-    PFNGLENABLEVERTEXARRAYATTRIBPROC enable_vertex_array_attrib;
-    PFNGLVERTEXARRAYATTRIBFORMATPROC vertex_array_attrib_format;
     PFNGLVERTEXARRAYATTRIBBINDINGPROC vertex_array_attrib_binding;
-    PFNGLNAMEDBUFFERSUBDATAPROC named_buffer_sub_data;
-    PFNGLPOLYGONMODEPROC polygon_mode;
-    PFNGLDRAWARRAYSPROC draw_arrays;
-    PFNGLBINDBUFFERBASEPROC bind_buffer_base;
-    PFNGLBINDVERTEXARRAYPROC bind_vertex_array;
+    PFNGLVERTEXARRAYATTRIBFORMATPROC vertex_array_attrib_format;
+    PFNGLVERTEXARRAYVERTEXBUFFERPROC vertex_array_vertex_buffer;
+    PFNGLVIEWPORTPROC viewport;
 };
 
 const u32 Gl_Invalid_Id = 0;
