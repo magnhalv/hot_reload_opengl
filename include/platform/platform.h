@@ -74,13 +74,12 @@ struct ApplicationInput {
     i32 client_width;
     i32 client_height;
     f32 dt;
-    UserInput *input;
+    UserInput input;
 };
 
 // Functions application MUST support
 typedef void (__cdecl *UPDATE_AND_RENDER_PROC)(ApplicationMemory *, ApplicationInput *);
-typedef void (__cdecl *LOAD_GL_FUNCTIONS_PROC)(GLFunctions *);
-typedef void (__cdecl *LOAD_PLATFORM_FUNCTIONS_PROC)(Platform *);
+typedef void (__cdecl *LOAD_PROC)(GLFunctions *, Platform *, ApplicationMemory *);
 
 const u64 Permanent_Storage_Size = MegaBytes(10);
 const u64 Transient_Storage_Size = MegaBytes(1);

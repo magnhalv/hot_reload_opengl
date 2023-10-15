@@ -11,17 +11,9 @@
 struct ApplicationFunctions {
     HMODULE handle = nullptr;
     UPDATE_AND_RENDER_PROC update_and_render = nullptr;
-    LOAD_GL_FUNCTIONS_PROC load_gl_functions = nullptr;
-    LOAD_PLATFORM_FUNCTIONS_PROC load_platform_functions = nullptr;
+    LOAD_PROC load = nullptr;
     FILETIME last_loaded_dll_write_time = {0, 0};
 };
-
-const u32 Max_Path_Length = 512;
-
-void path_to_wchar(const char *in, wchar_t destination[Max_Path_Length]) {
-    assert(strlen(in) < Max_Path_Length);
-    MultiByteToWideChar(CP_ACP, 0, in, -1, destination, Max_Path_Length / sizeof(destination[0]));
-}
 
 u64 win32_file_time_to_u64(const FILETIME &ft) {
     ULARGE_INTEGER uli;
@@ -104,6 +96,155 @@ u64 win32_file_last_modified(const char *path) {
     }
 }
 
+struct Recording {
+    u64 num_frames_recorded;
+    u64 current_playback_frame;
+    HANDLE frame_input_handle;
+};
+
+struct Playback {
+    u64 num_frames_recorded;
+    u64 current_playback_frame;
+    ApplicationInput *input;
+    void *memory;
+};
+
+const u32 Max_Path_Length = 512;
+
+bool win32_start_recording(void *memory, size_t memory_size, Recording &recording) {
+    HANDLE file;
+    DWORD bytes_written;
+
+    file = CreateFile("recorded_state", GENERIC_WRITE, 0, nullptr, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, nullptr);
+
+    if (file == INVALID_HANDLE_VALUE) {
+        printf("start_recording failed: Failed creating file 'recorded_state'.\n");
+        return false;
+    }
+
+    auto is_success = WriteFile(file, memory, memory_size, &bytes_written, nullptr);
+    assert(memory_size == bytes_written);
+
+    CloseHandle(file);
+
+    if (!is_success) {
+        printf("start_recording failed: Failed to save current state to file\n");
+        return false;
+    }
+
+    file = CreateFile("recorded_input", GENERIC_WRITE, 0, nullptr, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, nullptr);
+    if (file == INVALID_HANDLE_VALUE) {
+        printf("start_recording failed: Failed creating file 'recorded_input'.\n");
+        return false;
+    }
+
+    recording.frame_input_handle = file;
+    recording.current_playback_frame = 0;
+    recording.num_frames_recorded = 0;
+
+    return true;
+}
+
+void win32_stop_recording(Recording &recording) {
+    CloseHandle(recording.frame_input_handle);
+    recording.frame_input_handle = INVALID_HANDLE_VALUE;
+}
+
+bool win32_record_frame_input(ApplicationInput *input, Recording &recording) {
+    DWORD pos = SetFilePointer(recording.frame_input_handle, 0, nullptr, FILE_END);
+    if (pos == INVALID_SET_FILE_POINTER) {
+        printf("record_frame_input failed: Failed to set file pointer to end of file 'recorded_input'.\n");
+        return false;
+    }
+
+    DWORD bytes_written;
+    auto is_success = WriteFile(recording.frame_input_handle, input, sizeof(ApplicationInput), &bytes_written, nullptr);
+
+    if (!is_success) {
+        printf("record_frame_input failed: Unable to write to 'recorded_input'.\n");
+        return false;
+    }
+    recording.num_frames_recorded++;
+    return true;
+}
+
+bool win32_init_playback(Playback &playback) {
+    HANDLE state_handle;
+    char path[] = "recorded_state";
+    auto state_size = win32_file_size(path);
+    state_handle = CreateFileA(path,         // file to open
+                               GENERIC_READ,          // open for reading
+                               FILE_SHARE_READ,       // share for reading
+                               nullptr,               // default security
+                               OPEN_EXISTING,         // existing file only
+                               FILE_ATTRIBUTE_NORMAL, // normal file
+                               nullptr);                 // no attr. template
+
+    if (state_handle == INVALID_HANDLE_VALUE) {
+        DWORD error = GetLastError();
+        printf("win32_init_playback failed: Failed to open file %s. Error code: %lu\n", path, error);
+        return false;
+    }
+
+    // Read one character less than the buffer size to save room for
+    // the terminating NULL character.
+    DWORD bytes_read = 0;
+    playback.memory = VirtualAlloc(nullptr, // TODO: Might want to set this
+                                   (SIZE_T) state_size,
+                                   MEM_RESERVE | MEM_COMMIT,
+                                   PAGE_READWRITE);
+    if (!ReadFile(state_handle, playback.memory, state_size, &bytes_read, nullptr)) {
+        printf("Unable to read from file: %s\nGetLastError=%lu\n", path, GetLastError());
+        VirtualFree(playback.memory, 0, MEM_RELEASE);
+        CloseHandle(state_handle);
+        return false;
+    }
+
+    assert(bytes_read == state_size);
+    CloseHandle(state_handle);
+
+
+    char input_path[] = "recorded_input";
+    auto input_handle = CreateFileA(input_path,         // file to open
+                                    GENERIC_READ,          // open for reading
+                                    FILE_SHARE_READ,       // share for reading
+                                    nullptr,               // default security
+                                    OPEN_EXISTING,         // existing file only
+                                    FILE_ATTRIBUTE_NORMAL, // normal file
+                                    nullptr);                 // no attr. template
+    auto input_size = win32_file_size(input_path);
+    if (input_handle == INVALID_HANDLE_VALUE) {
+        DWORD error = GetLastError();
+        printf("win32_init_playback failed: Failed to open file %s. Error code: %lu\n", path, error);
+        return false;
+    }
+
+    playback.input = (ApplicationInput *) VirtualAlloc(nullptr, input_size, MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE);
+    if (!ReadFile(input_handle, playback.input, input_size, &bytes_read, nullptr)) {
+        VirtualFree(playback.memory, 0, MEM_RELEASE);
+        VirtualFree(playback.input, 0, MEM_RELEASE);
+        CloseHandle(input_handle);
+        return false;
+    }
+    CloseHandle(input_handle);
+
+    assert(input_size == bytes_read);
+    assert(input_size % sizeof(ApplicationInput) == 0);
+    playback.num_frames_recorded = input_size/sizeof(ApplicationInput);
+    playback.current_playback_frame = 0;
+
+    return true;
+}
+
+void win32_stop_playback(Playback &playback) {
+    VirtualFree(playback.memory, 0, MEM_RELEASE);
+    VirtualFree(playback.input, 0, MEM_RELEASE);
+    playback.memory = nullptr;
+    playback.input = nullptr;
+    playback.num_frames_recorded = 0;
+    playback.current_playback_frame = 0;
+}
+
 bool win32_should_reload_dll(ApplicationFunctions *app_functions) {
     if (app_functions->update_and_render == nullptr) {
         return true;
@@ -162,16 +303,9 @@ void win32_load_dll(ApplicationFunctions *functions) {
         FreeLibrary(functions->handle);
     }
 
-    functions->load_gl_functions = (LOAD_GL_FUNCTIONS_PROC) GetProcAddress(functions->handle, "load_gl_functions");
-    if (functions->load_gl_functions == nullptr) {
-        printf("Unable to load 'load_gl_functions' function in Application_in_use.dll\n");
-        FreeLibrary(functions->handle);
-    }
-
-    functions->load_platform_functions = (LOAD_PLATFORM_FUNCTIONS_PROC) GetProcAddress(functions->handle,
-                                                                                       "load_platform_functions");
-    if (functions->load_platform_functions == nullptr) {
-        printf("Unable to load 'load_platform_functions' function in Application_in_use.dll\n");
+    functions->load = (LOAD_PROC) GetProcAddress(functions->handle, "load");
+    if (functions->load == nullptr) {
+        printf("Unable to load 'load' function in Application_in_use.dll\n");
         FreeLibrary(functions->handle);
     }
 
@@ -249,6 +383,12 @@ void win32_process_pending_messages(HWND hwnd, bool &is_running, UserInput &new_
                     }
                     if (vk_code == 'D') {
                         win32_process_keyboard_message(new_input.move_right, is_down);
+                    }
+                    if (vk_code == 'R') {
+                        win32_process_keyboard_message(new_input.r, is_down);
+                    }
+                    if (vk_code == 'P') {
+                        win32_process_keyboard_message(new_input.p, is_down);
                     }
                     if (vk_code == VK_UP) {
                     }
@@ -431,8 +571,10 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR szCmdLine,
     ApplicationMemory memory = {};
     memory.permanent_storage_size = Permanent_Storage_Size;
     memory.transient_storage_size = Transient_Storage_Size;
+
+    const size_t total_memory_size = memory.permanent_storage_size + memory.transient_storage_size;
     void *memory_block = VirtualAlloc(nullptr, // TODO: Might want to set this
-                                      (SIZE_T) (memory.permanent_storage_size + memory.transient_storage_size),
+                                      (SIZE_T) total_memory_size,
                                       MEM_RESERVE | MEM_COMMIT,
                                       PAGE_READWRITE);
     if (memory_block == nullptr) {
@@ -444,7 +586,6 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR szCmdLine,
     memory.transient_storage = (u8 *) memory.permanent_storage + memory.permanent_storage_size;
 
     ApplicationInput app_input = {};
-
     ApplicationFunctions app_functions = {};
 
     /* INPUT */
@@ -472,6 +613,10 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR szCmdLine,
 
     /* MAIN LOOP */
     auto is_running = true;
+    auto is_recording = false;
+    auto is_playing_back = false;
+    Recording recording = {};
+    Playback playback = {};
 
     DWORD last_tick = GetTickCount();
     while (is_running) {
@@ -482,8 +627,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR szCmdLine,
         if (win32_should_reload_dll(&app_functions)) {
             printf("Hot reloading dll...\n");
             win32_load_dll(&app_functions);
-            app_functions.load_gl_functions(&gl_funcs);
-            app_functions.load_platform_functions(&platform);
+            app_functions.load(&gl_funcs, &platform, &memory);
         }
 
         RECT clientRect;
@@ -492,7 +636,54 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR szCmdLine,
         app_input.client_width = clientRect.right - clientRect.left;
 
         win32_process_pending_messages(hwnd, is_running, *current_input, *previous_input);
-        app_input.input = current_input;
+
+        if (current_input->r.is_pressed()) {
+            printf("Is pressed\n");
+            if (!is_recording) {
+                auto is_success = win32_start_recording(memory_block, total_memory_size, recording);
+                if (is_success) {
+                    is_recording = true;
+                    printf("Started recording.\n");
+                } else {
+                    printf("Failed to start recording.\n");
+                }
+            } else {
+                is_recording = false;
+                win32_stop_recording(recording);
+                printf("Stopped successful recording.\n");
+            }
+        }
+
+        if (current_input->p.is_pressed() && !is_recording) {
+            auto is_success = win32_init_playback(playback);
+            if (is_success) {
+                printf("Started playback.\n");
+                is_playing_back = true;
+                memcpy(memory_block, playback.memory, total_memory_size);
+            } else {
+                printf("Failed to start playback.\n");
+            }
+        }
+
+        if (is_playing_back) {
+            if (playback.current_playback_frame == playback.num_frames_recorded) {
+                memcpy(memory_block, playback.memory, total_memory_size);
+                playback.current_playback_frame = 0;
+            }
+            app_input = playback.input[playback.current_playback_frame++];
+        } else {
+            app_input.input = *current_input;
+        }
+
+        if (is_recording) {
+            if (!win32_record_frame_input(&app_input, recording)) {
+                printf("Recording failed. Stopping.\n");
+                win32_stop_recording(recording);
+                is_recording = false;
+            }
+        }
+
+
         app_functions.update_and_render(&memory, &app_input);
 
         SwapBuffers(hdc);

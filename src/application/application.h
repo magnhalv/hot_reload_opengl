@@ -28,7 +28,6 @@ extern GLFunctions *gl;
 extern Platform *platform;
 
 extern "C" __declspec(dllexport) void update_and_render(ApplicationMemory *memory, ApplicationInput *app_input);
-extern "C" __declspec(dllexport) void load_gl_functions(GLFunctions * in_gl);
-extern "C" __declspec(dllexport) void load_platform_functions(Platform *in_platform);
+extern "C" __declspec(dllexport) void load(GLFunctions * in_gl, Platform *in_platform, ApplicationMemory *in_memory);
 
 #endif //HOT_RELOAD_OPENGL_APPLICATION_H

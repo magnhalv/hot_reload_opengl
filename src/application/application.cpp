@@ -12,7 +12,6 @@ GLFunctions *gl = nullptr;
 Platform *platform = nullptr;
 
 void update_and_render(ApplicationMemory *memory, ApplicationInput *app_input) {
-    assert(sizeof(AppState) < memory->permanent_storage_size);
     auto *state = (AppState *) memory->permanent_storage;
     const f32 ratio = static_cast<f32>(app_input->client_width) / static_cast<f32>(app_input->client_height);
 
@@ -21,10 +20,7 @@ void update_and_render(ApplicationMemory *memory, ApplicationInput *app_input) {
     [[unlikely]]
     if (!state->is_initialized) {
         log_info("Initializing...");
-        state->transient.size = memory->transient_storage_size;
-        state->transient.used = 0;
-        state->transient.memory = (u8 *) memory->transient_storage;
-        set_transient_arena(&state->transient);
+
 
         import_mesh("assets/meshes/cube.glb", &state->mesh);
 
@@ -56,8 +52,8 @@ void update_and_render(ApplicationMemory *memory, ApplicationInput *app_input) {
 
     gl->clear_color(1.0f, 0.6f, 0.0f, 0.0f);
 
-    state->camera.update_cursor(static_cast<f32>(app_input->input->mouse.dx),
-                                static_cast<f32>(app_input->input->mouse.dy));
+    state->camera.update_cursor(static_cast<f32>(app_input->input.mouse.dx),
+                                static_cast<f32>(app_input->input.mouse.dy));
     //state->camera.update_keyboard(*app_input->input);
     update_player(state, app_input);
 
@@ -92,10 +88,14 @@ void update_and_render(ApplicationMemory *memory, ApplicationInput *app_input) {
     clear_transient();
 }
 
-void load_gl_functions(GLFunctions *in_gl) {
+void load(GLFunctions * in_gl, Platform *in_platform, ApplicationMemory *in_memory) {
     gl = in_gl;
-}
-
-void load_platform_functions(Platform *in_platform) {
     platform = in_platform;
+
+    assert(sizeof(AppState) < in_memory->permanent_storage_size);
+    auto *state = (AppState *) in_memory->permanent_storage;
+    state->transient.size = in_memory->transient_storage_size;
+    state->transient.used = 0;
+    state->transient.memory = (u8 *) in_memory->transient_storage;
+    set_transient_arena(&state->transient);
 }

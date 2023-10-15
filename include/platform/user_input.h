@@ -1,11 +1,20 @@
 #ifndef HOT_RELOAD_OPENGL_USER_INPUT_H
 #define HOT_RELOAD_OPENGL_USER_INPUT_H
 
+#include <cassert>
+
+#define ArrayCount(Array) (sizeof(Array) / sizeof((Array)[0]))
+
 struct ButtonState {
     ButtonState(): half_transition_count(0), ended_down(false) {}
 
     i32 half_transition_count; // How many times it flipped between up and down
     bool ended_down;
+
+    /// @brief Is pressed this frame
+    [[nodiscard]] auto is_pressed() const -> bool {
+        return ended_down && half_transition_count == 1;
+    }
 };
 
 struct MouseInput {
@@ -16,11 +25,13 @@ struct MouseInput {
     ButtonState buttons[2];
 };
 
+const i32 NUM_BUTTONS = 7;
+
 struct UserInput {
     MouseInput mouse;
     union
     {
-        ButtonState buttons[6];
+        ButtonState buttons[NUM_BUTTONS + 1];
         struct {
             ButtonState move_up;
             ButtonState move_down;
@@ -28,6 +39,8 @@ struct UserInput {
             ButtonState move_right;
 
             ButtonState space;
+            ButtonState r;
+            ButtonState p;
 
             //Note: All buttons must be added above this line
             ButtonState terminator;
@@ -35,12 +48,12 @@ struct UserInput {
     };
 
     void frame_clear(const UserInput &prev_frame_input) {
-        //mouse.x = prev_frame_input.mouse.x;
-        //mouse.y = prev_frame_input.mouse.y;
         mouse.dx = 0;
         mouse.dy = 0;
 
-        for (auto i = 0; i < 5; i++) {
+        assert(NUM_BUTTONS+1 == ArrayCount(buttons));
+
+        for (auto i = 0; i < NUM_BUTTONS; i++) {
             buttons[i].half_transition_count = 0;
             buttons[i].ended_down = prev_frame_input.buttons[i].ended_down;
         }
