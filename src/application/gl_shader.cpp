@@ -98,14 +98,14 @@ auto print_program_info_log(GLuint handle) -> void {
     }
 }
 
-auto create_program(const char *vertex_path, const char *fragment_path) -> u32 {
-    auto handle = gl->create_program();
-    const auto vertex_handle = compile_shader(vertex_path);
+auto GLShaderProgram::create_program(const char *vertex_path, const char *fragment_path) -> u32 {
+    auto program_handle = gl->create_program();
+    auto vertex_handle = compile_shader(vertex_path);
     if (vertex_handle == Gl_Invalid_Id) {
         return Gl_Invalid_Id;
     }
 
-    const auto fragment_handle = compile_shader(fragment_path);
+    auto fragment_handle = compile_shader(fragment_path);
     if (fragment_handle == Gl_Invalid_Id) {
         return Gl_Invalid_Id;
     }
@@ -116,21 +116,21 @@ auto create_program(const char *vertex_path, const char *fragment_path) -> u32 {
     assert(vertex_length < Shader_Path_Max_Length);
     assert(fragment_length < Shader_Path_Max_Length);
 
-    gl->attach_shader(handle, vertex_handle);
-    gl->attach_shader(handle, fragment_handle);
+    gl->attach_shader(program_handle, vertex_handle);
+    gl->attach_shader(program_handle, fragment_handle);
     // TODO: Check for linking errors
-    gl->link_program(handle);
+    gl->link_program(program_handle);
 
     char buffer[8192];
     GLsizei length = 0;
-    gl->get_program_info_log(handle, sizeof(buffer), &length, buffer);
+    gl->get_program_info_log(program_handle, sizeof(buffer), &length, buffer);
     if (length) {
-        gl->delete_program(handle);
+        gl->delete_program(program_handle);
         log_error("Failed to link shader program.\n%s\n", buffer);
         return Gl_Invalid_Id;
     }
 
-    return handle;
+    return program_handle;
 }
 
 auto GLShaderProgram::initialize(const char *vertex_path, const char *fragment_path) -> bool {
@@ -148,24 +148,27 @@ auto GLShaderProgram::initialize(const char *vertex_path, const char *fragment_p
     }
 
     handle_ = handle;
-    strcpy_s(vertex.path, Shader_Path_Max_Length, vertex_path);
-    strcpy_s(fragment.path, Shader_Path_Max_Length, fragment_path);
-    vertex.last_modified = platform->get_file_last_modified(vertex_path);
-    fragment.last_modified = platform->get_file_last_modified(fragment_path);
+
+    strcpy_s(vertex_source.path, vertex_path);
+    strcpy_s(fragment_source.path, fragment_path);
+    vertex_source.last_modified = platform->get_file_last_modified(vertex_path);
+    fragment_source.last_modified  = platform->get_file_last_modified(fragment_path);
     return true;
 }
 
 auto GLShaderProgram::relink_if_changed() -> void {
-    auto vertex_last_modified = platform->get_file_last_modified(vertex.path);
-    auto fragment_last_modified = platform->get_file_last_modified(fragment.path);
-    if (vertex_last_modified > vertex.last_modified || fragment_last_modified > fragment.last_modified) {
-        const auto new_handle = create_program(vertex.path, fragment.path);
+    auto vertex_last_modified = platform->get_file_last_modified(vertex_source.path);
+    auto fragment_last_modified = platform->get_file_last_modified(fragment_source.path);
+    if (vertex_last_modified > vertex_source.last_modified || fragment_last_modified > fragment_source.last_modified) {
+        const auto new_handle = create_program(vertex_source.path, fragment_source.path);
         if (new_handle != Gl_Invalid_Id) {
+            log_info("Compiled new gl shader program with id: %d", new_handle);
+            log_info("Deleting old gl shader program with id: %d", handle_);
             gl->delete_program(handle_);
             handle_ = new_handle;
         }
-        vertex.last_modified = vertex_last_modified;
-        fragment.last_modified = fragment_last_modified;
+        vertex_source.last_modified = vertex_last_modified;
+        fragment_source.last_modified = fragment_last_modified;
     }
 }
 
@@ -211,7 +214,13 @@ GLenum GLShaderType_from_file_name(const char *file_name) {
 
 void GLShaderProgram::useProgram() const {
     assert(handle_ != 0);
+    // TODO: HANDLE CAN BE INVALID ON PLAYBACK
     gl->use_program(handle_);
+    auto err = gl->get_error();
+    if (err != GL_NO_ERROR) {
+        printf("Found an error!\n");
+        exit(1);
+    }
 }
 
 auto GLVao::init() -> void {

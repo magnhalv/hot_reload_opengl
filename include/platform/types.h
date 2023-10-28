@@ -22,6 +22,8 @@ constexpr u64 KiloBytes(u64 num_kb) noexcept { return num_kb * 1024; }
 constexpr u64 MegaBytes(u64 num_mb) noexcept { return KiloBytes(1024 * num_mb); }
 constexpr u64 GigaBytes(u64 num_gb) noexcept { return MegaBytes(1024 * num_gb); }
 
+const i32 Max_Path_Length = 128;
+
 
 
 #endif //HOT_RELOAD_OPENGL_TYPES_H

@@ -23,4 +23,9 @@ struct Mesh {
 
 };
 
+struct FileAsset {
+    char path[Max_Path_Length];
+    TimeStamp last_modified;
+};
+
 #endif //HOT_RELOAD_OPENGL_ASSETS_H

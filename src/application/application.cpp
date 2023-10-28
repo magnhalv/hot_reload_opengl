@@ -12,21 +12,20 @@ GLFunctions *gl = nullptr;
 Platform *platform = nullptr;
 
 void update_and_render(ApplicationMemory *memory, ApplicationInput *app_input) {
-    auto *state = (AppState *) memory->permanent_storage;
+    auto *state = (AppState *) memory->permanent;
     const f32 ratio = static_cast<f32>(app_input->client_width) / static_cast<f32>(app_input->client_height);
 
     auto *mesh = &state->mesh;
+    auto &program = asset_manager->shader_programs[0];
 
     [[unlikely]]
     if (!state->is_initialized) {
         log_info("Initializing...");
 
-
         import_mesh("assets/meshes/cube.glb", &state->mesh);
 
-
-        state->program.initialize(R"(.\assets\shaders\mesh.vert)", R"(.\assets\shaders\basic_light.frag)");
-        state->program.useProgram();
+        program.initialize(R"(.\assets\shaders\mesh.vert)", R"(.\assets\shaders\basic_light.frag)");
+        program.useProgram();
 
         state->camera.init(-90.0f, 0.0f, vec3(2.0f, 5.0f, 10.0f));
 
@@ -47,8 +46,8 @@ void update_and_render(ApplicationMemory *memory, ApplicationInput *app_input) {
 
         state->is_initialized = true;
     }
-    state->program.relink_if_changed();
-    state->program.useProgram();
+    program.relink_if_changed();
+    program.useProgram();
 
     gl->clear_color(1.0f, 0.6f, 0.0f, 0.0f);
 
@@ -92,10 +91,13 @@ void load(GLFunctions * in_gl, Platform *in_platform, ApplicationMemory *in_memo
     gl = in_gl;
     platform = in_platform;
 
-    assert(sizeof(AppState) < in_memory->permanent_storage_size);
-    auto *state = (AppState *) in_memory->permanent_storage;
-    state->transient.size = in_memory->transient_storage_size;
+    assert(sizeof(AppState) < Permanent_Memory_Block_Size);
+    auto *state = (AppState *) in_memory->permanent;
+    state->transient.size = Transient_Memory_Block_Size;
     state->transient.used = 0;
-    state->transient.memory = (u8 *) in_memory->transient_storage;
+    state->transient.memory = (u8 *) in_memory->transient;
     set_transient_arena(&state->transient);
+
+    assert(sizeof(AssetManager) <= Assets_Memory_Block_Size);
+    asset_manager_set_memory(in_memory->asset);
 }

@@ -46,6 +46,8 @@ struct GLFunctions {
     PFNGLVERTEXARRAYATTRIBFORMATPROC vertex_array_attrib_format;
     PFNGLVERTEXARRAYVERTEXBUFFERPROC vertex_array_vertex_buffer;
     PFNGLVIEWPORTPROC viewport;
+    PFNGLDETACHSHADERPROC detach_shader;
+    PFNGLGETPROGRAMIVPROC get_programiv;
 };
 
 const u32 Gl_Invalid_Id = 0;
@@ -63,11 +65,15 @@ struct Platform {
     DEBUG_PRINT_READABLE_TIMESTAMP_PROC debug_print_readable_timestamp;
 };
 
+const u64 Permanent_Memory_Block_Size = MegaBytes(10);
+const u64 Transient_Memory_Block_Size = MegaBytes(1);
+const u64 Assets_Memory_Block_Size = MegaBytes(1);
+const u64 Total_Memory_Size = Permanent_Memory_Block_Size + Transient_Memory_Block_Size + Assets_Memory_Block_Size;
+
 struct ApplicationMemory {
-    size_t permanent_storage_size = 0;
-    void *permanent_storage = nullptr; // NOTE: Must be cleared to zero
-    size_t transient_storage_size = 0;
-    void *transient_storage = nullptr; // NOTE: Must be cleared to zero
+    void *permanent = nullptr; // NOTE: Must be cleared to zero
+    void *transient = nullptr; // NOTE: Must be cleared to zero
+    void *asset = nullptr; // NOTE: Must be cleared to zero
 };
 
 struct ApplicationInput {
@@ -80,8 +86,5 @@ struct ApplicationInput {
 // Functions application MUST support
 typedef void (__cdecl *UPDATE_AND_RENDER_PROC)(ApplicationMemory *, ApplicationInput *);
 typedef void (__cdecl *LOAD_PROC)(GLFunctions *, Platform *, ApplicationMemory *);
-
-const u64 Permanent_Storage_Size = MegaBytes(10);
-const u64 Transient_Storage_Size = MegaBytes(1);
 
 #endif //HOT_RELOAD_OPENGL_PLATFORM_H

@@ -6,3 +6,4 @@ deps/archives
 build
 application/deps/src
 application/deps/archives
+*.dat

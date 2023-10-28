@@ -6,6 +6,8 @@ add_library(Application SHARED
         application/application.cpp
         application/asset_import.cpp
         application/gl_shader.cpp
+        application/memory_arena.cpp
+        application/asset_manager.cpp
         application/memory.cpp
         )
 

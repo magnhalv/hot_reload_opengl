@@ -7,15 +7,15 @@
 #include <math/mat4.h>
 
 #include "assets.h"
-#include "memory.h"
+#include "memory_arena.h"
 #include "camera.h"
 #include "gl_shader.h"
+#include "asset_manager.h"
 
 struct AppState {
     bool is_initialized = false;
     Mesh mesh;
     Camera camera;
-    GLShaderProgram program;
     MemoryArena transient;
     GLVao vao;
 

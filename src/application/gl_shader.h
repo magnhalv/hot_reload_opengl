@@ -8,6 +8,8 @@
 
 #include <platform/types.h>
 
+#include "assets.h"
+
 const i32 Shader_Path_Max_Length = 512;
 
 struct Shader {
@@ -26,10 +28,11 @@ public:
     auto set_uniform(const char *name, const glm::vec4 &vec) const -> void;
     auto relink_if_changed() -> void;
 private:
-    Shader vertex;
-    Shader fragment;
-    GLuint handle_;
+    auto create_program(const char *vertex_path, const char *fragment_path) -> u32;
 
+    FileAsset vertex_source;
+    FileAsset fragment_source;
+    GLuint handle_;
 };
 
 const u32 Max_Buffers = 2;

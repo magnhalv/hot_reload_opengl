@@ -39,7 +39,7 @@ u64 win32_file_size(const char *path) {
 /// \param read_buffer Buffer to put the content of the file into
 /// \param buffer_size Number of bytes one wish to read, but remember to add one for the zero terminating character.
 /// \return Success
-bool win32_read_file(const char *path, char *read_buffer, const u64 buffer_size) {
+bool win32_read_text_file(const char *path, char *read_buffer, const u64 buffer_size) {
     HANDLE file_handle;
     file_handle = CreateFileA(path,         // file to open
                               GENERIC_READ,          // open for reading
@@ -106,39 +106,85 @@ struct Playback {
     u64 num_frames_recorded;
     u64 current_playback_frame;
     ApplicationInput *input;
-    void *memory;
+    void *permanent_memory;
+    void *asset_memory;
 };
 
-const u32 Max_Path_Length = 512;
+const char Permanent_Memory_Block_Recording_File[] = "permanent_memory_block_recording.dat";
+const char Asset_Memory_Block_Recording_File[] = "asset_memory_block_recording.dat";
+const char User_Input_Recording_File[] = "user_input_recording.dat";
 
-bool win32_start_recording(void *memory, size_t memory_size, Recording &recording) {
-    HANDLE file;
+bool win32_overwrite_file(const char *path, void *memory, size_t size) {
+    HANDLE handle = CreateFile(path, GENERIC_WRITE, 0, nullptr, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, nullptr);
+    if (handle == INVALID_HANDLE_VALUE) {
+        DWORD error = GetLastError();
+        printf("[ERROR]: overwrite_file failed when creating file '%s'.\nError code: %lu.\n", path, error);
+        return false;
+    }
+
     DWORD bytes_written;
-
-    file = CreateFile("recorded_state", GENERIC_WRITE, 0, nullptr, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, nullptr);
-
-    if (file == INVALID_HANDLE_VALUE) {
-        printf("start_recording failed: Failed creating file 'recorded_state'.\n");
-        return false;
-    }
-
-    auto is_success = WriteFile(file, memory, memory_size, &bytes_written, nullptr);
-    assert(memory_size == bytes_written);
-
-    CloseHandle(file);
-
+    auto is_success = WriteFile(handle, memory, size, &bytes_written, nullptr);
+    assert(size == bytes_written);
+    CloseHandle(handle);
     if (!is_success) {
-        printf("start_recording failed: Failed to save current state to file\n");
+        DWORD error = GetLastError();
+        printf("[ERROR]: overwrite_file failed when attempting to write to file '%s'.\nError code: %lu.\n", path,
+               error);
+        return false;
+    }
+    return true;
+}
+
+bool win32_read_binary_file(const char *path, void *destination_buffer, const u64 buffer_size) {
+    HANDLE file_handle;
+    file_handle = CreateFileA(path,         // file to open
+                              GENERIC_READ,          // open for reading
+                              FILE_SHARE_READ,       // share for reading
+                              nullptr,               // default security
+                              OPEN_EXISTING,         // existing file only
+                              FILE_ATTRIBUTE_NORMAL, // normal file
+                              nullptr);                 // no attr. template
+
+    if (file_handle == INVALID_HANDLE_VALUE) {
+        DWORD error = GetLastError();
+        printf("Failed to open file %s. Error code: %lu\n", path, error);
         return false;
     }
 
-    file = CreateFile("recorded_input", GENERIC_WRITE, 0, nullptr, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, nullptr);
-    if (file == INVALID_HANDLE_VALUE) {
-        printf("start_recording failed: Failed creating file 'recorded_input'.\n");
+    // Read one character less than the buffer size to save room for
+    // the terminating NULL character.
+    DWORD bytes_read = 0;
+    if (!ReadFile(file_handle, destination_buffer, buffer_size, &bytes_read, nullptr)) {
+        printf("[ERROR] win32_read_binary file: Unable to read file '%s'.\nWindows error code=%lu\n", path,
+               GetLastError());
+        CloseHandle(file_handle);
         return false;
     }
 
-    recording.frame_input_handle = file;
+    assert(bytes_read == buffer_size);
+    CloseHandle(file_handle);
+    return true;
+}
+
+bool win32_start_recording(ApplicationMemory *memory, Recording &recording) {
+    if (!win32_overwrite_file(Permanent_Memory_Block_Recording_File, memory->permanent, Permanent_Memory_Block_Size)) {
+        printf("[ERROR]: win32_start_recording: Unable to write permanent memory.\n");
+        return false;
+    }
+
+    if (!win32_overwrite_file(Asset_Memory_Block_Recording_File, memory->asset, Assets_Memory_Block_Size)) {
+        printf("[ERROR]: win32_start_recording: Unable to write asset memory.\n");
+        return false;
+    }
+
+    HANDLE user_input_record_file = CreateFile(User_Input_Recording_File, GENERIC_WRITE, 0, nullptr, CREATE_ALWAYS,
+                                               FILE_ATTRIBUTE_NORMAL, nullptr);
+    if (user_input_record_file == INVALID_HANDLE_VALUE) {
+        printf("[ERROR]: win32_start_recording: Failed creating file 'recorded_input'.\n");
+        return false;
+    }
+
+    recording.frame_input_handle = user_input_record_file;
     recording.current_playback_frame = 0;
     recording.num_frames_recorded = 0;
 
@@ -153,7 +199,7 @@ void win32_stop_recording(Recording &recording) {
 bool win32_record_frame_input(ApplicationInput *input, Recording &recording) {
     DWORD pos = SetFilePointer(recording.frame_input_handle, 0, nullptr, FILE_END);
     if (pos == INVALID_SET_FILE_POINTER) {
-        printf("record_frame_input failed: Failed to set file pointer to end of file 'recorded_input'.\n");
+        printf("[ERROR]: record_frame_input failed: Failed to set file pointer to end of file 'recorded_input'.\n");
         return false;
     }
 
@@ -161,7 +207,7 @@ bool win32_record_frame_input(ApplicationInput *input, Recording &recording) {
     auto is_success = WriteFile(recording.frame_input_handle, input, sizeof(ApplicationInput), &bytes_written, nullptr);
 
     if (!is_success) {
-        printf("record_frame_input failed: Unable to write to 'recorded_input'.\n");
+        printf("[ERROR]: record_frame_input failed: Unable to write to 'recorded_input'.\n");
         return false;
     }
     recording.num_frames_recorded++;
@@ -169,77 +215,49 @@ bool win32_record_frame_input(ApplicationInput *input, Recording &recording) {
 }
 
 bool win32_init_playback(Playback &playback) {
-    HANDLE state_handle;
-    char path[] = "recorded_state";
-    auto state_size = win32_file_size(path);
-    state_handle = CreateFileA(path,         // file to open
-                               GENERIC_READ,          // open for reading
-                               FILE_SHARE_READ,       // share for reading
-                               nullptr,               // default security
-                               OPEN_EXISTING,         // existing file only
-                               FILE_ATTRIBUTE_NORMAL, // normal file
-                               nullptr);                 // no attr. template
-
-    if (state_handle == INVALID_HANDLE_VALUE) {
-        DWORD error = GetLastError();
-        printf("win32_init_playback failed: Failed to open file %s. Error code: %lu\n", path, error);
+    playback.permanent_memory = VirtualAlloc(nullptr, // TODO: Might want to set this
+                                             (SIZE_T) Permanent_Memory_Block_Size,
+                                             MEM_RESERVE | MEM_COMMIT,
+                                             PAGE_READWRITE);
+    if (!win32_read_binary_file(Permanent_Memory_Block_Recording_File, playback.permanent_memory,
+                                Permanent_Memory_Block_Size)) {
+        printf("[ERROR]: win32_init_playback: Failed to read permanent memory block recording file.\n");
+        VirtualFree(playback.permanent_memory, 0, MEM_RELEASE);
         return false;
     }
 
-    // Read one character less than the buffer size to save room for
-    // the terminating NULL character.
-    DWORD bytes_read = 0;
-    playback.memory = VirtualAlloc(nullptr, // TODO: Might want to set this
-                                   (SIZE_T) state_size,
-                                   MEM_RESERVE | MEM_COMMIT,
-                                   PAGE_READWRITE);
-    if (!ReadFile(state_handle, playback.memory, state_size, &bytes_read, nullptr)) {
-        printf("Unable to read from file: %s\nGetLastError=%lu\n", path, GetLastError());
-        VirtualFree(playback.memory, 0, MEM_RELEASE);
-        CloseHandle(state_handle);
+    playback.asset_memory = VirtualAlloc(nullptr, (SIZE_T) Assets_Memory_Block_Size, MEM_RESERVE | MEM_COMMIT,
+                                         PAGE_READWRITE);
+    if (!win32_read_binary_file(Asset_Memory_Block_Recording_File, playback.asset_memory,
+                                Assets_Memory_Block_Size)) {
+        printf("[ERROR]: win32_init_playback: Failed to read asset memory block recording file.\n");
+        VirtualFree(playback.permanent_memory, 0, MEM_RELEASE);
+        VirtualFree(playback.asset_memory, 0, MEM_RELEASE);
         return false;
     }
 
-    assert(bytes_read == state_size);
-    CloseHandle(state_handle);
-
-
-    char input_path[] = "recorded_input";
-    auto input_handle = CreateFileA(input_path,         // file to open
-                                    GENERIC_READ,          // open for reading
-                                    FILE_SHARE_READ,       // share for reading
-                                    nullptr,               // default security
-                                    OPEN_EXISTING,         // existing file only
-                                    FILE_ATTRIBUTE_NORMAL, // normal file
-                                    nullptr);                 // no attr. template
-    auto input_size = win32_file_size(input_path);
-    if (input_handle == INVALID_HANDLE_VALUE) {
-        DWORD error = GetLastError();
-        printf("win32_init_playback failed: Failed to open file %s. Error code: %lu\n", path, error);
-        return false;
-    }
-
+    auto input_size = win32_file_size(User_Input_Recording_File);
     playback.input = (ApplicationInput *) VirtualAlloc(nullptr, input_size, MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE);
-    if (!ReadFile(input_handle, playback.input, input_size, &bytes_read, nullptr)) {
-        VirtualFree(playback.memory, 0, MEM_RELEASE);
+    if (!win32_read_binary_file(User_Input_Recording_File, playback.input, input_size)) {
+        printf("[ERROR]: win32_init_playback: Failed to read user input recording file.\n");
+        VirtualFree(playback.permanent_memory, 0, MEM_RELEASE);
+        VirtualFree(playback.asset_memory, 0, MEM_RELEASE);
         VirtualFree(playback.input, 0, MEM_RELEASE);
-        CloseHandle(input_handle);
         return false;
     }
-    CloseHandle(input_handle);
 
-    assert(input_size == bytes_read);
     assert(input_size % sizeof(ApplicationInput) == 0);
-    playback.num_frames_recorded = input_size/sizeof(ApplicationInput);
+    playback.num_frames_recorded = input_size / sizeof(ApplicationInput);
     playback.current_playback_frame = 0;
-
     return true;
 }
 
 void win32_stop_playback(Playback &playback) {
-    VirtualFree(playback.memory, 0, MEM_RELEASE);
+    VirtualFree(playback.permanent_memory, 0, MEM_RELEASE);
+    VirtualFree(playback.asset_memory, 0, MEM_RELEASE);
     VirtualFree(playback.input, 0, MEM_RELEASE);
-    playback.memory = nullptr;
+    playback.permanent_memory = nullptr;
+    playback.asset_memory = nullptr;
     playback.input = nullptr;
     playback.num_frames_recorded = 0;
     playback.current_playback_frame = 0;
@@ -432,6 +450,23 @@ int main() {
 #pragma comment(linker, "/subsystem:windows")
 #endif
 
+void GLAPIENTRY MessageCallback(GLenum source,
+                                GLenum type,
+                                GLuint id,
+                                GLenum severity,
+                                GLsizei length,
+                                const GLchar* message,
+                                const void* userParam) {
+
+    if (severity == GL_DEBUG_SEVERITY_MEDIUM || severity == GL_DEBUG_SEVERITY_HIGH) {
+        fprintf(stderr, "GL CALLBACK: %s type = 0x%x, severity = 0x%x, message = %s\n",
+                (type == GL_DEBUG_TYPE_ERROR ? "** GL ERROR **" : ""),
+                type, severity, message);
+        fprintf(stderr, "Exiting...\n");
+        exit(1);
+    }
+}
+
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR szCmdLine, int iCmdShow) {
     /* CREATE WINDOW */
     WNDCLASSEX wndclass;
@@ -488,7 +523,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR szCmdLine,
 
     const int attribList[] = {
             WGL_CONTEXT_MAJOR_VERSION_ARB,
-            3,
+            4,
             WGL_CONTEXT_MINOR_VERSION_ARB,
             3,
             WGL_CONTEXT_FLAGS_ARB,
@@ -509,6 +544,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR szCmdLine,
         exit(1);
     } else {
         gl_funcs.attach_shader = glAttachShader;
+        gl_funcs.detach_shader = glDetachShader;
         gl_funcs.bind_buffer_base = glBindBufferBase;
         gl_funcs.bind_vertex_array = glBindVertexArray;
         gl_funcs.clear = glClear;
@@ -541,6 +577,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR szCmdLine,
         gl_funcs.vertex_array_attrib_format = glVertexArrayAttribFormat;
         gl_funcs.vertex_array_vertex_buffer = glVertexArrayVertexBuffer;
         gl_funcs.viewport = glViewport;
+        gl_funcs.get_programiv = glGetProgramiv;
     }
 
     auto _wglGetExtensionsStringEXT = (PFNWGLGETEXTENSIONSSTRINGEXTPROC) wglGetProcAddress(
@@ -567,14 +604,15 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR szCmdLine,
     ShowWindow(hwnd, SW_SHOW);
     UpdateWindow(hwnd);
 
+    glEnable(GL_DEBUG_OUTPUT);
+    glEnable(GL_DEBUG_OUTPUT_SYNCHRONOUS); // Calls to the callback will be synchronous
+    glDebugMessageCallback(MessageCallback, 0);
+
     /* MEMORY */
     ApplicationMemory memory = {};
-    memory.permanent_storage_size = Permanent_Storage_Size;
-    memory.transient_storage_size = Transient_Storage_Size;
 
-    const size_t total_memory_size = memory.permanent_storage_size + memory.transient_storage_size;
     void *memory_block = VirtualAlloc(nullptr, // TODO: Might want to set this
-                                      (SIZE_T) total_memory_size,
+                                      (SIZE_T) Total_Memory_Size,
                                       MEM_RESERVE | MEM_COMMIT,
                                       PAGE_READWRITE);
     if (memory_block == nullptr) {
@@ -582,8 +620,9 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR szCmdLine,
         printf("Unable to allocate memory: %lu", error);
         return -1;
     }
-    memory.permanent_storage = memory_block;
-    memory.transient_storage = (u8 *) memory.permanent_storage + memory.permanent_storage_size;
+    memory.permanent = memory_block;
+    memory.transient = (u8 *) memory.permanent + Permanent_Memory_Block_Size;
+    memory.asset = (u8 *) memory.permanent + Permanent_Memory_Block_Size + Transient_Memory_Block_Size;
 
     ApplicationInput app_input = {};
     ApplicationFunctions app_functions = {};
@@ -608,7 +647,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR szCmdLine,
     Platform platform = {};
     platform.get_file_last_modified = &win32_file_last_modified;
     platform.get_file_size = &win32_file_size;
-    platform.read_file = &win32_read_file;
+    platform.read_file = &win32_read_text_file;
     platform.debug_print_readable_timestamp = &win32_debug_print_readable_timestamp;
 
     /* MAIN LOOP */
@@ -638,9 +677,8 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR szCmdLine,
         win32_process_pending_messages(hwnd, is_running, *current_input, *previous_input);
 
         if (current_input->r.is_pressed()) {
-            printf("Is pressed\n");
             if (!is_recording) {
-                auto is_success = win32_start_recording(memory_block, total_memory_size, recording);
+                auto is_success = win32_start_recording(&memory, recording);
                 if (is_success) {
                     is_recording = true;
                     printf("Started recording.\n");
@@ -650,24 +688,31 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR szCmdLine,
             } else {
                 is_recording = false;
                 win32_stop_recording(recording);
-                printf("Stopped successful recording.\n");
+                printf("Recording successfully stopped.\n");
             }
         }
 
         if (current_input->p.is_pressed() && !is_recording) {
-            auto is_success = win32_init_playback(playback);
-            if (is_success) {
-                printf("Started playback.\n");
-                is_playing_back = true;
-                memcpy(memory_block, playback.memory, total_memory_size);
-            } else {
-                printf("Failed to start playback.\n");
+            if (!is_playing_back) {
+                auto is_success = win32_init_playback(playback);
+                if (is_success) {
+                    printf("Started playback.\n");
+                    is_playing_back = true;
+                    memcpy(memory.permanent, playback.permanent_memory, Permanent_Memory_Block_Size);
+                    memcpy(memory.asset, playback.asset_memory, Assets_Memory_Block_Size);
+                } else {
+                    printf("Failed to start playback.\n");
+                }
+            }
+            else {
+                win32_stop_playback(playback);
+                is_playing_back = false;
             }
         }
 
         if (is_playing_back) {
             if (playback.current_playback_frame == playback.num_frames_recorded) {
-                memcpy(memory_block, playback.memory, total_memory_size);
+                memcpy(memory.permanent, playback.permanent_memory, Permanent_Memory_Block_Size);
                 playback.current_playback_frame = 0;
             }
             app_input = playback.input[playback.current_playback_frame++];
