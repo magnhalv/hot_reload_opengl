@@ -3,6 +3,6 @@ cmake-build-debug-visual-studio
 deps/src
 deps/archives
 build
-application/deps/src
-application/deps/archives
+engine/deps/src
+engine/deps/archives
 *.dat

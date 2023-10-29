@@ -8,7 +8,7 @@
 #include <platform/types.h>
 #include <cassert>
 
-struct ApplicationFunctions {
+struct EngineFunctions {
     HMODULE handle = nullptr;
     UPDATE_AND_RENDER_PROC update_and_render = nullptr;
     LOAD_PROC load = nullptr;
@@ -105,7 +105,7 @@ struct Recording {
 struct Playback {
     u64 num_frames_recorded;
     u64 current_playback_frame;
-    ApplicationInput *input;
+    EngineInput *input;
     void *permanent_memory;
     void *asset_memory;
 };
@@ -166,7 +166,7 @@ bool win32_read_binary_file(const char *path, void *destination_buffer, const u6
     return true;
 }
 
-bool win32_start_recording(ApplicationMemory *memory, Recording &recording) {
+bool win32_start_recording(EngineMemory *memory, Recording &recording) {
     if (!win32_overwrite_file(Permanent_Memory_Block_Recording_File, memory->permanent, Permanent_Memory_Block_Size)) {
         printf("[ERROR]: win32_start_recording: Unable to write permanent memory.\n");
         return false;
@@ -196,7 +196,7 @@ void win32_stop_recording(Recording &recording) {
     recording.frame_input_handle = INVALID_HANDLE_VALUE;
 }
 
-bool win32_record_frame_input(ApplicationInput *input, Recording &recording) {
+bool win32_record_frame_input(EngineInput *input, Recording &recording) {
     DWORD pos = SetFilePointer(recording.frame_input_handle, 0, nullptr, FILE_END);
     if (pos == INVALID_SET_FILE_POINTER) {
         printf("[ERROR]: record_frame_input failed: Failed to set file pointer to end of file 'recorded_input'.\n");
@@ -204,7 +204,7 @@ bool win32_record_frame_input(ApplicationInput *input, Recording &recording) {
     }
 
     DWORD bytes_written;
-    auto is_success = WriteFile(recording.frame_input_handle, input, sizeof(ApplicationInput), &bytes_written, nullptr);
+    auto is_success = WriteFile(recording.frame_input_handle, input, sizeof(EngineInput), &bytes_written, nullptr);
 
     if (!is_success) {
         printf("[ERROR]: record_frame_input failed: Unable to write to 'recorded_input'.\n");
@@ -237,7 +237,7 @@ bool win32_init_playback(Playback &playback) {
     }
 
     auto input_size = win32_file_size(User_Input_Recording_File);
-    playback.input = (ApplicationInput *) VirtualAlloc(nullptr, input_size, MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE);
+    playback.input = (EngineInput *) VirtualAlloc(nullptr, input_size, MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE);
     if (!win32_read_binary_file(User_Input_Recording_File, playback.input, input_size)) {
         printf("[ERROR]: win32_init_playback: Failed to read user input recording file.\n");
         VirtualFree(playback.permanent_memory, 0, MEM_RELEASE);
@@ -246,8 +246,8 @@ bool win32_init_playback(Playback &playback) {
         return false;
     }
 
-    assert(input_size % sizeof(ApplicationInput) == 0);
-    playback.num_frames_recorded = input_size / sizeof(ApplicationInput);
+    assert(input_size % sizeof(EngineInput) == 0);
+    playback.num_frames_recorded = input_size / sizeof(EngineInput);
     playback.current_playback_frame = 0;
     return true;
 }
@@ -263,11 +263,11 @@ void win32_stop_playback(Playback &playback) {
     playback.current_playback_frame = 0;
 }
 
-LPCTSTR dll_path = R"(.\bin\app\Application.dll)";
-LPCTSTR pdb_path = R"(.\bin\app\Application.pdb)";
+LPCTSTR dll_path = R"(.\bin\app\Engine.dll)";
+LPCTSTR pdb_path = R"(.\bin\app\Engine.pdb)";
 LPCTSTR versioned_dll_path = R"(.\bin\versions\)";
 
-bool win32_should_reload_dll(ApplicationFunctions *app_functions) {
+bool win32_should_reload_dll(EngineFunctions *app_functions) {
     if (app_functions->update_and_render == nullptr) {
         return true;
     }
@@ -282,7 +282,7 @@ bool win32_should_reload_dll(ApplicationFunctions *app_functions) {
     }
 }
 
-void win32_load_dll(ApplicationFunctions *functions) {
+void win32_load_dll(EngineFunctions *functions) {
     if (functions->handle != nullptr) {
         if (!FreeLibrary(functions->handle)) {
             DWORD error = GetLastError();
@@ -309,7 +309,7 @@ void win32_load_dll(ApplicationFunctions *functions) {
     }
 
     char dll_to_load_path[128];
-    sprintf(dll_to_load_path, "%s\\%s", dir_path, "Application.dll");
+    sprintf(dll_to_load_path, "%s\\%s", dir_path, "Engine.dll");
     if (!CopyFile(dll_path, dll_to_load_path, FALSE)) {
         DWORD error = GetLastError();
         printf("Failed to copy %s to %s. Error code: %lu\n", dll_path, dll_to_load_path, error);
@@ -317,7 +317,7 @@ void win32_load_dll(ApplicationFunctions *functions) {
     }
 
     char pdb_to_load_path[128];
-    sprintf(pdb_to_load_path, "%s\\%s", dir_path, "Application.pdb");
+    sprintf(pdb_to_load_path, "%s\\%s", dir_path, "Engine.pdb");
     if (!CopyFile(pdb_path, pdb_to_load_path, FALSE)) {
         DWORD error = GetLastError();
         printf("Failed to copy %s to %s. Error code: %lu\n", pdb_path, pdb_to_load_path, error);
@@ -334,13 +334,13 @@ void win32_load_dll(ApplicationFunctions *functions) {
 
     functions->update_and_render = (UPDATE_AND_RENDER_PROC) GetProcAddress(functions->handle, "update_and_render");
     if (functions->update_and_render == nullptr) {
-        printf("Unable to load 'update_and_render' function in Application.dll\n");
+        printf("Unable to load 'update_and_render' function in Engine.dll\n");
         FreeLibrary(functions->handle);
     }
 
     functions->load = (LOAD_PROC) GetProcAddress(functions->handle, "load");
     if (functions->load == nullptr) {
-        printf("Unable to load 'load' function in Application.dll\n");
+        printf("Unable to load 'load' function in Engine.dll\n");
         FreeLibrary(functions->handle);
     }
 
@@ -625,7 +625,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR szCmdLine,
     glDebugMessageCallback(MessageCallback, 0);
 
     /* MEMORY */
-    ApplicationMemory memory = {};
+    EngineMemory memory = {};
 
     void *memory_block = VirtualAlloc(nullptr, // TODO: Might want to set this
                                       (SIZE_T) Total_Memory_Size,
@@ -640,8 +640,8 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR szCmdLine,
     memory.transient = (u8 *) memory.permanent + Permanent_Memory_Block_Size;
     memory.asset = (u8 *) memory.permanent + Permanent_Memory_Block_Size + Transient_Memory_Block_Size;
 
-    ApplicationInput app_input = {};
-    ApplicationFunctions app_functions = {};
+    EngineInput app_input = {};
+    EngineFunctions app_functions = {};
 
     /* INPUT */
     RAWINPUTDEVICE mouse;

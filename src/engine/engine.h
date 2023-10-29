@@ -1,5 +1,5 @@
-#ifndef HOT_RELOAD_OPENGL_APPLICATION_H
-#define HOT_RELOAD_OPENGL_APPLICATION_H
+#ifndef HOT_RELOAD_OPENGL_ENGINE_H
+#define HOT_RELOAD_OPENGL_ENGINE_H
 
 #include <platform/platform.h>
 #include <platform/types.h>
@@ -12,12 +12,16 @@
 #include "gl_shader.h"
 #include "asset_manager.h"
 
-struct AppState {
+#include "allocators/pool_allocator.h"
+
+struct EngineState {
     bool is_initialized = false;
     Mesh mesh;
     Camera camera;
     MemoryArena transient;
     GLVao vao;
+
+    PoolAllocator pool;
 
     // TODO: Should this be global state? Might need computable buffers
     vec4 light;
@@ -27,7 +31,7 @@ struct AppState {
 extern GLFunctions *gl;
 extern Platform *platform;
 
-extern "C" __declspec(dllexport) void update_and_render(ApplicationMemory *memory, ApplicationInput *app_input);
-extern "C" __declspec(dllexport) void load(GLFunctions * in_gl, Platform *in_platform, ApplicationMemory *in_memory);
+extern "C" __declspec(dllexport) void update_and_render(EngineMemory *memory, EngineInput *app_input);
+extern "C" __declspec(dllexport) void load(GLFunctions * in_gl, Platform *in_platform, EngineMemory *in_memory);
 
-#endif //HOT_RELOAD_OPENGL_APPLICATION_H
+#endif //HOT_RELOAD_OPENGL_ENGINE_H

@@ -3,7 +3,7 @@
 
 #include <math/vec3.h>
 
-#include "application.h"
+#include "engine.h"
 #include "gl_shader.h"
 #include "asset_import.h"
 #include "player.h"
@@ -11,8 +11,8 @@
 GLFunctions *gl = nullptr;
 Platform *platform = nullptr;
 
-void update_and_render(ApplicationMemory *memory, ApplicationInput *app_input) {
-    auto *state = (AppState *) memory->permanent;
+void update_and_render(EngineMemory *memory, EngineInput *app_input) {
+    auto *state = (EngineState *) memory->permanent;
     const f32 ratio = static_cast<f32>(app_input->client_width) / static_cast<f32>(app_input->client_height);
 
     auto *mesh = &state->mesh;
@@ -22,7 +22,7 @@ void update_and_render(ApplicationMemory *memory, ApplicationInput *app_input) {
     if (!state->is_initialized) {
         log_info("Initializing...");
 
-        import_mesh("assets/meshes/cube.glb", &state->mesh);
+        import_mesh("assets/meshes/asset_Cube.fbx", &state->mesh);
 
         program.initialize(R"(.\assets\shaders\mesh.vert)", R"(.\assets\shaders\basic_light.frag)");
         program.useProgram();
@@ -44,8 +44,12 @@ void update_and_render(ApplicationMemory *memory, ApplicationInput *app_input) {
         vao.add_uniform_buffer(&state->light, sizeof(vec4), 1, 0);
         vao.load_buffers();
 
+        state->pool.init(4, 32, static_cast<u8*>(memory->permanent) + sizeof(EngineState), PoolAllocator::calc_total_size(4, 32));
+
         state->is_initialized = true;
     }
+    state->pool.check_integrity();
+
     program.relink_if_changed();
     program.useProgram();
 
@@ -87,12 +91,12 @@ void update_and_render(ApplicationMemory *memory, ApplicationInput *app_input) {
     clear_transient();
 }
 
-void load(GLFunctions * in_gl, Platform *in_platform, ApplicationMemory *in_memory) {
+void load(GLFunctions * in_gl, Platform *in_platform, EngineMemory *in_memory) {
     gl = in_gl;
     platform = in_platform;
 
-    assert(sizeof(AppState) < Permanent_Memory_Block_Size);
-    auto *state = (AppState *) in_memory->permanent;
+    assert(sizeof(EngineState) < Permanent_Memory_Block_Size);
+    auto *state = (EngineState *) in_memory->permanent;
     state->transient.size = Transient_Memory_Block_Size;
     state->transient.used = 0;
     state->transient.memory = (u8 *) in_memory->transient;

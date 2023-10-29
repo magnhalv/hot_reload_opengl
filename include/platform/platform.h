@@ -70,13 +70,13 @@ const u64 Transient_Memory_Block_Size = MegaBytes(1);
 const u64 Assets_Memory_Block_Size = MegaBytes(1);
 const u64 Total_Memory_Size = Permanent_Memory_Block_Size + Transient_Memory_Block_Size + Assets_Memory_Block_Size;
 
-struct ApplicationMemory {
+struct EngineMemory {
     void *permanent = nullptr; // NOTE: Must be cleared to zero
     void *transient = nullptr; // NOTE: Must be cleared to zero
     void *asset = nullptr; // NOTE: Must be cleared to zero
 };
 
-struct ApplicationInput {
+struct EngineInput {
     i32 client_width;
     i32 client_height;
     f32 dt;
@@ -84,7 +84,7 @@ struct ApplicationInput {
 };
 
 // Functions application MUST support
-typedef void (__cdecl *UPDATE_AND_RENDER_PROC)(ApplicationMemory *, ApplicationInput *);
-typedef void (__cdecl *LOAD_PROC)(GLFunctions *, Platform *, ApplicationMemory *);
+typedef void (__cdecl *UPDATE_AND_RENDER_PROC)(EngineMemory *, EngineInput *);
+typedef void (__cdecl *LOAD_PROC)(GLFunctions *, Platform *, EngineMemory *);
 
 #endif //HOT_RELOAD_OPENGL_PLATFORM_H

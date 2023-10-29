@@ -23,8 +23,8 @@ void import_mesh(const char *path, Mesh* mesh) {
     const aiScene *scene = aiImportFile(path, aiProcess_Triangulate);
 
     if (scene == nullptr || !scene->HasMeshes()) {
-        printf("Unable to load basic_scene.glb\n");
-        exit(255);
+        log_error("Unable to load %s: %s\n", path, aiGetErrorString());
+        exit(1);
     } else {
         printf("Scene loaded.\n");
     }

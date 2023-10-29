@@ -1,9 +1,9 @@
 #ifndef HOT_RELOAD_OPENGL_PLAYER_H
 #define HOT_RELOAD_OPENGL_PLAYER_H
 
-#include "application.h"
+#include "engine.h"
 
-auto update_player(AppState *state, ApplicationInput *app_input) {
+auto update_player(EngineState *state, EngineInput *app_input) {
     if (app_input->input.move_left.ended_down) {
         state->mesh.transform.position.x -= 10.0f * app_input->dt;
     }
