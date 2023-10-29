@@ -66,7 +66,7 @@ void update_and_render(ApplicationMemory *memory, ApplicationInput *app_input) {
 
     state->mvp = p * v * m;
 
-    state->light = vec4(0.0f, 1.0f, 4.0f, 0.0f);
+    state->light = vec4(0.0f, 1.0f, 5.0f, 0.0f);
 
     state->vao.update_dynamic_buffers();
 

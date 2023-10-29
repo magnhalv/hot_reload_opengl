@@ -263,73 +263,89 @@ void win32_stop_playback(Playback &playback) {
     playback.current_playback_frame = 0;
 }
 
+LPCTSTR dll_path = R"(.\bin\app\Application.dll)";
+LPCTSTR pdb_path = R"(.\bin\app\Application.pdb)";
+LPCTSTR versioned_dll_path = R"(.\bin\versions\)";
+
 bool win32_should_reload_dll(ApplicationFunctions *app_functions) {
     if (app_functions->update_and_render == nullptr) {
         return true;
     }
 
-    LPCTSTR path = R"(.\bin\Application.dll)";
     WIN32_FILE_ATTRIBUTE_DATA file_info;
-    if (GetFileAttributesEx(path, GetFileExInfoStandard, &file_info)) {
+    if (GetFileAttributesEx(dll_path, GetFileExInfoStandard, &file_info)) {
         auto result = CompareFileTime(&file_info.ftLastWriteTime, &app_functions->last_loaded_dll_write_time);
         return result > 0;
     } else {
-        printf("Unable to open read time of '%s'.\n", path);
+        printf("Unable to open read time of '%s'.\n", dll_path);
         return false;
-    }
-}
-
-void win32_copy_dll() {
-    LPCTSTR source = R"(.\bin\Application.dll)";
-    LPCTSTR destination = R"(.\bin\Application_in_use.dll)";
-
-    int num_retries = 0;
-    while (!CopyFile(source, destination, FALSE) && num_retries < 20) {
-        DWORD error = GetLastError();
-        printf("Failed to copy %s to %s. Error code: %lu\n", source, destination, error);
-        Sleep(100);
-        num_retries++;
     }
 }
 
 void win32_load_dll(ApplicationFunctions *functions) {
     if (functions->handle != nullptr) {
-        FreeLibrary(functions->handle);
-        functions->handle = nullptr;
-
-        int num_retries = 0;
-        while (!DeleteFile(".\\bin\\Application_in_use.dll") && num_retries < 20) {
-            Sleep(100);
-            printf("Failed to delete temp .dll. Retrying...\n");
-            num_retries++;
+        if (!FreeLibrary(functions->handle)) {
+            DWORD error = GetLastError();
+            printf("Failed to unload .dll. Error code: %lu. Exiting...\n", error);
+            exit(1);
         }
+        functions->handle = nullptr;
     }
 
-    win32_copy_dll();
+    SYSTEMTIME curr_time;
+    GetSystemTime(&curr_time);
+    char timestamp[20];
+    sprintf(timestamp, "%04d%02d%02d%02d%02d%02d",
+            curr_time.wYear, curr_time.wMonth, curr_time.wDay, curr_time.wHour, curr_time.wMinute, curr_time.wSecond);
 
-    functions->handle = LoadLibrary(TEXT("bin\\Application_in_use.dll"));
+
+    char dir_path[128];
+    sprintf(dir_path, "%s%s", versioned_dll_path, timestamp);
+
+    if (!CreateDirectory(dir_path, nullptr)) {
+        DWORD error = GetLastError();
+        printf("Failed to create directory %s. Error code: %lu\n", dir_path, error);
+        exit(1);
+    }
+
+    char dll_to_load_path[128];
+    sprintf(dll_to_load_path, "%s\\%s", dir_path, "Application.dll");
+    if (!CopyFile(dll_path, dll_to_load_path, FALSE)) {
+        DWORD error = GetLastError();
+        printf("Failed to copy %s to %s. Error code: %lu\n", dll_path, dll_to_load_path, error);
+        exit(1);
+    }
+
+    char pdb_to_load_path[128];
+    sprintf(pdb_to_load_path, "%s\\%s", dir_path, "Application.pdb");
+    if (!CopyFile(pdb_path, pdb_to_load_path, FALSE)) {
+        DWORD error = GetLastError();
+        printf("Failed to copy %s to %s. Error code: %lu\n", pdb_path, pdb_to_load_path, error);
+        exit(1);
+    }
+
+    functions->handle = LoadLibrary(dll_to_load_path);
     if (functions->handle == nullptr) {
         DWORD error = GetLastError();
-        printf("Unable to load Application_in_use.dll. Error: %d\n", error);
+        printf("Unable to load %s. Error: %lu\n", dll_to_load_path, error);
         functions->update_and_render = nullptr;
         return;
     }
 
     functions->update_and_render = (UPDATE_AND_RENDER_PROC) GetProcAddress(functions->handle, "update_and_render");
     if (functions->update_and_render == nullptr) {
-        printf("Unable to load 'update_and_render' function in Application_in_use.dll\n");
+        printf("Unable to load 'update_and_render' function in Application.dll\n");
         FreeLibrary(functions->handle);
     }
 
     functions->load = (LOAD_PROC) GetProcAddress(functions->handle, "load");
     if (functions->load == nullptr) {
-        printf("Unable to load 'load' function in Application_in_use.dll\n");
+        printf("Unable to load 'load' function in Application.dll\n");
         FreeLibrary(functions->handle);
     }
 
-    LPCTSTR path = "bin\\Application.dll";
     WIN32_FILE_ATTRIBUTE_DATA file_info;
-    if (GetFileAttributesEx(path, GetFileExInfoStandard, &file_info)) {
+    if (GetFileAttributesEx(dll_path, GetFileExInfoStandard, &file_info)) {
         functions->last_loaded_dll_write_time = file_info.ftLastWriteTime;
     }
 }
@@ -455,8 +471,8 @@ void GLAPIENTRY MessageCallback(GLenum source,
                                 GLuint id,
                                 GLenum severity,
                                 GLsizei length,
-                                const GLchar* message,
-                                const void* userParam) {
+                                const GLchar *message,
+                                const void *userParam) {
 
     if (severity == GL_DEBUG_SEVERITY_MEDIUM || severity == GL_DEBUG_SEVERITY_HIGH) {
         fprintf(stderr, "GL CALLBACK: %s type = 0x%x, severity = 0x%x, message = %s\n",
@@ -703,8 +719,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR szCmdLine,
                 } else {
                     printf("Failed to start playback.\n");
                 }
-            }
-            else {
+            } else {
                 win32_stop_playback(playback);
                 is_playing_back = false;
             }

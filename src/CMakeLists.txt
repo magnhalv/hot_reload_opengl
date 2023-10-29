@@ -36,7 +36,7 @@ target_link_libraries(Application assimp math)
 set_target_properties(Application PROPERTIES DEBUG_POSTFIX "")
 
 set_target_properties(Application PROPERTIES
-        RUNTIME_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/bin
-        LIBRARY_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/bin
-        ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/bin
+        RUNTIME_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/bin/app
+        LIBRARY_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/bin/app
+        ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/bin/app
 )
