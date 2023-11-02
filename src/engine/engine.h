@@ -21,7 +21,8 @@ struct EngineState {
     MemoryArena transient;
     GLVao vao;
 
-    PoolAllocator pool;
+    MemoryArena arena;
+
 
     // TODO: Should this be global state? Might need computable buffers
     vec4 light;

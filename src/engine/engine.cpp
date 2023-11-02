@@ -18,6 +18,7 @@ void update_and_render(EngineMemory *memory, EngineInput *app_input) {
     auto *mesh = &state->mesh;
     auto &program = asset_manager->shader_programs[0];
 
+
     [[unlikely]]
     if (!state->is_initialized) {
         log_info("Initializing...");
@@ -44,11 +45,21 @@ void update_and_render(EngineMemory *memory, EngineInput *app_input) {
         vao.add_uniform_buffer(&state->light, sizeof(vec4), 1, 0);
         vao.load_buffers();
 
-        state->pool.init(4, 32, static_cast<u8*>(memory->permanent) + sizeof(EngineState), PoolAllocator::calc_total_size(4, 32));
+        state->arena.init(static_cast<u8*>(memory->permanent) + sizeof(EngineState), 128);
+        state->arena.check_integrity();
+        state->arena.allocate(32);
+        state->arena.check_integrity();
+        u8 *my_mem = static_cast<u8*>(state->arena.allocate(32));
+        state->arena.check_integrity();
+        state->arena.allocate(32);
+        state->arena.check_integrity();
+
 
         state->is_initialized = true;
     }
-    state->pool.check_integrity();
+
+
+    state->arena.check_integrity();
 
     program.relink_if_changed();
     program.useProgram();
