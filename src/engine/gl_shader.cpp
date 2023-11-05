@@ -147,40 +147,64 @@ auto GLShaderProgram::initialize(const char *vertex_path, const char *fragment_p
         return false;
     }
 
-    handle_ = handle;
+    _handle = handle;
 
-    strcpy_s(vertex_source.path, vertex_path);
-    strcpy_s(fragment_source.path, fragment_path);
-    vertex_source.last_modified = platform->get_file_last_modified(vertex_path);
-    fragment_source.last_modified  = platform->get_file_last_modified(fragment_path);
+    strcpy_s(_vertex_source.path, vertex_path);
+    strcpy_s(_fragment_source.path, fragment_path);
+    _vertex_source.last_modified = platform->get_file_last_modified(vertex_path);
+    _fragment_source.last_modified = platform->get_file_last_modified(fragment_path);
     return true;
 }
 
+auto GLShaderProgram::add_uniform_buffer(void *data, GLsizeiptr size, u32 index, GLbitfield flags) -> bool {
+    if (_num_uniform_buffers == Max_Buffers) {
+        return false;
+    }
+    auto &buffer = _uniform_buffers[_num_uniform_buffers++];
+    buffer.data = data;
+    buffer.size = size;
+    buffer.index = index;
+    buffer.flags = flags;
+
+    gl->create_buffers(1, &buffer.handle);
+    gl->named_buffer_storage(buffer.handle, buffer.size, nullptr, GL_DYNAMIC_STORAGE_BIT);
+    return true;
+}
+
+auto GLShaderProgram::update_dynamic_buffers() const -> void {
+    for (i32 i = 0; i < _num_uniform_buffers; i++) {
+        auto buffer = _uniform_buffers[i];
+        gl->bind_buffer_base(GL_UNIFORM_BUFFER, buffer.index, buffer.handle);
+        gl->named_buffer_sub_data(buffer.handle, 0, buffer.size, buffer.data);
+    }
+}
+
 auto GLShaderProgram::relink_if_changed() -> void {
-    auto vertex_last_modified = platform->get_file_last_modified(vertex_source.path);
-    auto fragment_last_modified = platform->get_file_last_modified(fragment_source.path);
-    if (vertex_last_modified > vertex_source.last_modified || fragment_last_modified > fragment_source.last_modified) {
-        const auto new_handle = create_program(vertex_source.path, fragment_source.path);
+    auto vertex_last_modified = platform->get_file_last_modified(_vertex_source.path);
+    auto fragment_last_modified = platform->get_file_last_modified(_fragment_source.path);
+    if (vertex_last_modified > _vertex_source.last_modified ||
+        fragment_last_modified > _fragment_source.last_modified) {
+        const auto new_handle = create_program(_vertex_source.path, _fragment_source.path);
         if (new_handle != Gl_Invalid_Id) {
             log_info("Compiled new gl shader program with id: %d", new_handle);
-            log_info("Deleting old gl shader program with id: %d", handle_);
-            gl->delete_program(handle_);
-            handle_ = new_handle;
+            log_info("Deleting old gl shader program with id: %d", _handle);
+            gl->delete_program(_handle);
+            _handle = new_handle;
         }
-        vertex_source.last_modified = vertex_last_modified;
-        fragment_source.last_modified = fragment_last_modified;
+        _vertex_source.last_modified = vertex_last_modified;
+        _fragment_source.last_modified = fragment_last_modified;
     }
 }
 
 
 void GLShaderProgram::set_uniform(const char *name, const glm::vec4 &vec) const {
-    i32 id = gl->get_uniform_location(handle_, name);
+    i32 id = gl->get_uniform_location(_handle, name);
     gl->uniform_4f(id, vec.x, vec.y, vec.z, vec.w);
 }
 
 void GLShaderProgram::free() {
-    gl->delete_program(handle_);
-    handle_ = 0;
+    gl->delete_program(_handle);
+    _handle = 0;
 }
 
 int ends_with(const char *s, const char *part) {
@@ -213,9 +237,9 @@ GLenum GLShaderType_from_file_name(const char *file_name) {
 
 
 void GLShaderProgram::useProgram() const {
-    assert(handle_ != 0);
+    assert(_handle != 0);
     // TODO: HANDLE CAN BE INVALID ON PLAYBACK
-    gl->use_program(handle_);
+    gl->use_program(_handle);
     auto err = gl->get_error();
     if (err != GL_NO_ERROR) {
         printf("Found an error!\n");
@@ -231,7 +255,7 @@ auto GLVao::destroy() -> void {
     gl->delete_vertex_array(1, &handle);
 }
 
-auto GLVao::bind() -> void {
+auto GLVao::bind() const -> void {
     gl->bind_vertex_array(handle);
 }
 
@@ -244,18 +268,6 @@ auto GLVao::add_buffer(void *data, GLsizeiptr size, u32 index, i32 stride, GLbit
     buf.size = size;
     buf.index = index;
     buf.stride = stride;
-    buf.flags = flags;
-    return true;
-}
-
-auto GLVao::add_uniform_buffer(void *data, GLsizeiptr size, u32 index, GLbitfield flags) -> bool {
-    if (num_uniform_buffers == Max_Buffers) {
-        return false;
-    }
-    auto &buf = uniform_buffers[num_uniform_buffers++];
-    buf.data = data;
-    buf.size = size;
-    buf.index = index;
     buf.flags = flags;
     return true;
 }
@@ -273,19 +285,5 @@ auto GLVao::load_buffers() -> void {
         gl->vertex_array_attrib_format(handle, buffer.index, 3, GL_FLOAT, GL_FALSE, 0);
         // Makes vertex attribute available in shader layout=buffer.index
         gl->vertex_array_attrib_binding(handle, buffer.index, buffer.index);
-    }
-
-    for (i32 i = 0; i < num_uniform_buffers; i++) {
-        auto &u_buf = uniform_buffers[i];
-        gl->create_buffers(1, &u_buf.handle);
-        gl->named_buffer_storage(u_buf.handle, u_buf.size, nullptr, GL_DYNAMIC_STORAGE_BIT);
-        gl->bind_buffer_base(GL_UNIFORM_BUFFER, u_buf.index, u_buf.handle);
-    }
-}
-
-auto GLVao::update_dynamic_buffers() -> void {
-    for (i32 i = 0; i < num_uniform_buffers; i++) {
-        auto u_buf = uniform_buffers[i];
-        gl->named_buffer_sub_data(u_buf.handle, 0, u_buf.size, u_buf.data);
     }
 }

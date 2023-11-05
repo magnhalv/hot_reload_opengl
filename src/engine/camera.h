@@ -1,5 +1,4 @@
-#ifndef HOT_RELOAD_OPENGL_CAMERA_H
-#define HOT_RELOAD_OPENGL_CAMERA_H
+#pragma once
 
 #include <glm/glm.hpp>
 #include <glm/ext.hpp>
@@ -79,6 +78,3 @@ struct Camera {
         return _position;
     }
 };
-
-
-#endif //HOT_RELOAD_OPENGL_CAMERA_H

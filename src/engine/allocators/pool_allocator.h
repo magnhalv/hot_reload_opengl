@@ -1,5 +1,4 @@
-#ifndef HOT_RELOAD_OPENGL_POOL_ALLOCATOR_H
-#define HOT_RELOAD_OPENGL_POOL_ALLOCATOR_H
+#pragma once
 
 #include <platform/types.h>
 #include <cinttypes>
@@ -108,5 +107,3 @@ struct PoolAllocator {
         return static_cast<void *>(&memory[pos]);
     }
 };
-
-#endif //HOT_RELOAD_OPENGL_POOL_ALLOCATOR_H

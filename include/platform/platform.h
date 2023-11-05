@@ -48,6 +48,10 @@ struct GLFunctions {
     PFNGLVIEWPORTPROC viewport;
     PFNGLDETACHSHADERPROC detach_shader;
     PFNGLGETPROGRAMIVPROC get_programiv;
+    PFNGLSTENCILOPPROC stencil_op;
+    PFNGLSTENCILFUNCPROC stencil_func;
+    PFNGLSTENCILMASKPROC stencil_mask;
+    PFNGLDISABLEPROC disable;
 };
 
 const u32 Gl_Invalid_Id = 0;

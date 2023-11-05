@@ -310,10 +310,11 @@ void win32_load_dll(EngineFunctions *functions) {
 
     char dll_to_load_path[128];
     sprintf(dll_to_load_path, "%s\\%s", dir_path, "Engine.dll");
-    if (!CopyFile(dll_path, dll_to_load_path, FALSE)) {
+    while (!CopyFile(dll_path, dll_to_load_path, FALSE)) {
         DWORD error = GetLastError();
         printf("Failed to copy %s to %s. Error code: %lu\n", dll_path, dll_to_load_path, error);
-        exit(1);
+        //exit(1);
+        // TODO: Make this more airtight
     }
 
     char pdb_to_load_path[128];
@@ -594,6 +595,10 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR szCmdLine,
         gl_funcs.vertex_array_vertex_buffer = glVertexArrayVertexBuffer;
         gl_funcs.viewport = glViewport;
         gl_funcs.get_programiv = glGetProgramiv;
+        gl_funcs.stencil_op = glStencilOp;
+        gl_funcs.stencil_func = glStencilFunc;
+        gl_funcs.stencil_mask = glStencilMask;
+        gl_funcs.disable = glDisable;
     }
 
     auto _wglGetExtensionsStringEXT = (PFNWGLGETEXTENSIONSSTRINGEXTPROC) wglGetProcAddress(

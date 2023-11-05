@@ -16,7 +16,7 @@ struct Transform {
     Transform(const vec3& p, const quat& r, const vec3& s): position(p), rotation(r), scale(s) {}
     Transform(): position(vec3(0, 0, 0)), rotation(quat(0, 0, 0, 1)), scale(vec3(1, 1, 1)) {}
 
-    auto to_mat4() -> mat4;
+    [[nodiscard]] auto to_mat4() const -> mat4;
 };
 
 Transform combine(const Transform& a, const Transform& b);

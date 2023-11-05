@@ -41,11 +41,11 @@ Transform mix(const Transform& a, const Transform &b, float dt) {
     );
 }
 
-auto Transform::to_mat4() -> mat4 {
+auto Transform::to_mat4() const -> mat4 {
     vec3 x = rotation * vec3(1, 0, 0);
     vec3 y = rotation * vec3(0, 1, 0);
     vec3 z = rotation * vec3(0, 0, 1);
-    
+
     x = x*scale.x;
     y = y*scale.y;
     z = z*scale.z;

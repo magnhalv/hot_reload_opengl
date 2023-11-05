@@ -1,12 +1,11 @@
-#ifndef HOT_RELOAD_OPENGL_ENGINE_H
-#define HOT_RELOAD_OPENGL_ENGINE_H
+#pragma once
 
 #include <platform/platform.h>
 #include <platform/types.h>
 #include <math/vec4.h>
 #include <math/mat4.h>
 
-#include "assets.h"
+#include "mesh.h"
 #include "memory_arena.h"
 #include "camera.h"
 #include "gl_shader.h"
@@ -16,10 +15,9 @@
 
 struct EngineState {
     bool is_initialized = false;
-    Mesh mesh;
+    Mesh meshes[3];
     Camera camera;
     MemoryArena transient;
-    GLVao vao;
 
     MemoryArena arena;
 
@@ -35,4 +33,3 @@ extern Platform *platform;
 extern "C" __declspec(dllexport) void update_and_render(EngineMemory *memory, EngineInput *app_input);
 extern "C" __declspec(dllexport) void load(GLFunctions * in_gl, Platform *in_platform, EngineMemory *in_memory);
 
-#endif //HOT_RELOAD_OPENGL_ENGINE_H

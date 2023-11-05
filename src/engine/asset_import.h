@@ -1,7 +1,6 @@
 #pragma once
 
-#include "assets.h"
-
+#include "mesh.h"
 
 void import_mesh(const char *path, Mesh* meshes);
 
