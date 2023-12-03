@@ -68,7 +68,7 @@ struct GLVao {
     auto destroy() -> void;
     auto bind() const -> void;
 
-    [[nodiscard]] auto add_buffer(void *data, GLsizeiptr size, u32 index, i32 stride, GLbitfield flags) -> bool;
+    auto add_buffer(void *data, GLsizeiptr size, u32 index, i32 stride, GLbitfield flags) -> void;
     auto load_buffers() -> void;
 };
 

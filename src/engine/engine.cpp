@@ -7,11 +7,30 @@
 #include "gl_shader.h"
 #include "asset_import.h"
 #include "player.h"
+#include "array.h"
+#include "ray.h"
 
 GLFunctions *gl = nullptr;
 Platform *platform = nullptr;
 
 const i32 meshes_to_draw = 3;
+
+vec3 get_mouse_ray(const EngineInput &input, const mat4 &view_matrix, const mat4 &inv_perspective_matrix)
+{
+    mat4 inv_view_matrix = inverse(view_matrix);
+
+    f32 normalized_x = ((2.0f * input.input.mouse.x) / input.client_width) - 1;
+    f32 normalized_y = (1.0f - ((2.0f * input.input.mouse.y) / input.client_height));
+
+    vec4 mouse_pos = vec4(normalized_x, normalized_y, -1.0f, 1.f);
+
+    vec4 mouse_eye_coords = inv_perspective_matrix * mouse_pos;
+    mouse_eye_coords.z = -1.0f;
+    mouse_eye_coords.w = 0.0f;
+
+    vec3 mouse_world_coords = normalized(to_vec3(inv_view_matrix * mouse_eye_coords));
+    return mouse_world_coords;
+}
 
 void update_and_render(EngineMemory *memory, EngineInput *app_input) {
     auto *state = (EngineState *) memory->permanent;
@@ -24,6 +43,11 @@ void update_and_render(EngineMemory *memory, EngineInput *app_input) {
     [[unlikely]]
     if (!state->is_initialized) {
         log_info("Initializing...");
+
+        state->permanent.init(static_cast<u8 *>(memory->permanent) + sizeof(EngineState),
+                          Permanent_Memory_Block_Size - sizeof(EngineState));
+        const int num_meshes = 3;
+        state->meshes.init(static_cast<Mesh *>(state->permanent.allocate(sizeof(Mesh) * num_meshes)), num_meshes);
 
         import_mesh("assets/meshes/asset_Cube.fbx", &state->meshes[0]);
         import_mesh("assets/meshes/asset_Sphere.fbx", &state->meshes[1]);
@@ -40,8 +64,7 @@ void update_and_render(EngineMemory *memory, EngineInput *app_input) {
 
         state->camera.init(-90.0f, 0.0f, vec3(2.0f, 5.0f, 10.0f));
 
-        // TODO: Abstract way meshes
-        for (auto & mesh : state->meshes) {
+        for (auto &mesh: state->meshes) {
             mesh.vao.init();
             mesh.vao.bind();
 
@@ -53,19 +76,17 @@ void update_and_render(EngineMemory *memory, EngineInput *app_input) {
             mesh.vao.load_buffers();
         }
 
-        state->arena.init(static_cast<u8 *>(memory->permanent) + sizeof(EngineState),
-                          Permanent_Memory_Block_Size - sizeof(EngineState));
-
         state->is_initialized = true;
     }
 
-    state->arena.check_integrity();
+    state->permanent.check_integrity();
     asset_manager->update_if_changed();
 
     // Start application
     program.useProgram();
 
     gl->clear_color(1.0f, 0.6f, 0.0f, 0.0f);
+    gl->clear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
     state->camera.update_cursor(static_cast<f32>(app_input->input.mouse.dx),
                                 static_cast<f32>(app_input->input.mouse.dy));
@@ -77,18 +98,37 @@ void update_and_render(EngineMemory *memory, EngineInput *app_input) {
     gl->enable(GL_DEPTH_TEST);
     gl->enable(GL_STENCIL_TEST);
     gl->stencil_mask(0xFF);
-    gl->clear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
-
+    gl->clear(GL_STENCIL_BUFFER_BIT);
     gl->stencil_func(GL_ALWAYS, 1, 0xFF);
     gl->stencil_op(GL_KEEP, GL_KEEP, GL_REPLACE);
 
-    for (auto & mesh : state->meshes) {
+    const auto projection = perspective(45.0f, ratio, 0.1f, 100.0f);
+    const auto inv_projection = inverse(projection);
+    const auto view = state->camera.get_view();
+    const auto pv = projection * view;
+
+    auto mouse_ray_w = get_mouse_ray(*app_input, view, inv_projection);
+
+    for (auto &mesh: state->meshes) {
+        auto bbox = mesh.get_bbox();
+        const mat4 m = mesh.transform.to_mat4();
+        vec3 ray_local_origin = to_vec3(inverse(m) * to_vec4(state->camera.get_position()));
+
+        Transform t = mesh.transform; // wtf is this
+        t.position = vec3();
+        t.scale = vec3(1, 1, 1);
+        vec3 local_mouse_ray = to_vec3(inverse(t.to_mat4()) * to_vec4(mouse_ray_w));
+
+        if (intersects(local_mouse_ray, ray_local_origin, bbox)) {
+            printf("Hit!\n");
+        }
+    }
+
+    for (auto &mesh: state->meshes) {
         mesh.vao.bind();
         const mat4 m = mesh.transform.to_mat4();
-        const mat4 v = state->camera.get_view();
-        const mat4 p = perspective(45.0f, ratio, 0.1f, 100.0f);
 
-        state->mvp = p * v * m;
+        state->mvp = pv * m;
         state->light = vec4(0.0f, 1.0f, 5.0f, 0.0f);
 
         program.update_dynamic_buffers();
@@ -100,7 +140,7 @@ void update_and_render(EngineMemory *memory, EngineInput *app_input) {
     gl->stencil_mask(0x00);
     gl->disable(GL_DEPTH_TEST);
     single_color.useProgram();
-    for (auto & mesh : state->meshes) {
+    for (auto &mesh: state->meshes) {
         mesh.vao.bind();
         auto t = mesh.transform;
         t.scale.x = 1.1;

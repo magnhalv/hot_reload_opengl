@@ -42,7 +42,7 @@ auto MemoryArena::clear() -> void {
     first_guard->next = nullptr;
 }
 
-auto MemoryArena::check_integrity() -> void {
+auto MemoryArena::check_integrity() const -> void {
     auto *guard = reinterpret_cast<ArenaGuard *>(memory);
     while (guard->next != nullptr) {
         if (guard->guard_pattern != GUARD_PATTERN) {

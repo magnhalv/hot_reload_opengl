@@ -3,12 +3,14 @@ cmake_minimum_required(VERSION 3.10)   # Adjust according to your installed vers
 project(Engine)
 
 add_library(Engine SHARED
-        engine/engine.cpp
+        engine/array.cpp
         engine/asset_import.cpp
-        engine/gl_shader.cpp
-        engine/memory_arena.cpp
         engine/asset_manager.cpp
+        engine/engine.cpp
+        engine/gl_shader.cpp
         engine/memory.cpp
+        engine/memory_arena.cpp
+        engine/ray.cpp
         )
 
 include_directories(../shared_deps/glad/include)

@@ -12,14 +12,14 @@
 #include "asset_manager.h"
 
 #include "allocators/pool_allocator.h"
+#include "array.h"
 
 struct EngineState {
     bool is_initialized = false;
-    Mesh meshes[3];
+    Array<Mesh> meshes;
     Camera camera;
     MemoryArena transient;
-
-    MemoryArena arena;
+    MemoryArena permanent;
 
 
     // TODO: Should this be global state? Might need computable buffers

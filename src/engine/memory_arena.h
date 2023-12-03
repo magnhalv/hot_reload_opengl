@@ -13,7 +13,7 @@ struct MemoryArena {
     auto init(void *in_memory, u32 in_size) -> void;
     auto allocate(u64 request_size) -> void*;
     auto clear() -> void;
-    auto check_integrity() -> void;
+    auto check_integrity() const -> void;
 };
 
 extern MemoryArena *transient; // This one is erased every frame.

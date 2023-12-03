@@ -259,17 +259,14 @@ auto GLVao::bind() const -> void {
     gl->bind_vertex_array(handle);
 }
 
-auto GLVao::add_buffer(void *data, GLsizeiptr size, u32 index, i32 stride, GLbitfield flags) -> bool {
-    if (num_buffers == Max_Buffers) {
-        return false;
-    }
+auto GLVao::add_buffer(void *data, GLsizeiptr size, u32 index, i32 stride, GLbitfield flags) -> void {
+    assert(num_buffers < Max_Buffers);
     auto &buf = buffers[num_buffers++];
     buf.data = data;
     buf.size = size;
     buf.index = index;
     buf.stride = stride;
     buf.flags = flags;
-    return true;
 }
 
 auto GLVao::load_buffers() -> void {
