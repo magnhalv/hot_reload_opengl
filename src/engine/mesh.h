@@ -19,12 +19,15 @@ struct BBox {
     f32 min_z;
 };
 
+// TODO: Might want to have some pointer to some draw buffer when we mutate the mesh (e.g. for animation). So the mesh
+// raw data will be considered read-only, but we have some buffer we copy it into, and do mutation there.
 struct Mesh {
-    GLVao vao;
+    i32 id{};
+    GLVao vao{};
     vec3 vertices[MESH_MAX_VERTICES]; // TODO: Make this dynamic
-    i32 num_vertices;
+    i32 num_vertices{};
     vec3 normals[MESH_MAX_VERTICES]; // TODO: Make this dynamic
-    i32 num_normals;
+    i32 num_normals{};
     Transform transform;
 
     auto get_bbox() -> BBox {

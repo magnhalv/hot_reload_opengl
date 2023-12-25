@@ -11,6 +11,7 @@ add_library(Engine SHARED
         engine/memory.cpp
         engine/memory_arena.cpp
         engine/ray.cpp
+        engine/renderer.cpp
         )
 
 include_directories(../shared_deps/glad/include)

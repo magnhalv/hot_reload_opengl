@@ -159,6 +159,6 @@ vec3 to_vec3(const vec4 &v) {
     return {v.x, v.y, v.z};
 }
 
-vec4 to_vec4(const vec3 &v) {
-    return {v.x, v.y, v.z, 1.0f};
+vec4 to_vec4(const vec3 &v, f32 w) {
+    return {v.x, v.y, v.z, w};
 }

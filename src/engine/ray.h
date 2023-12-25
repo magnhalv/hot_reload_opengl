@@ -11,3 +11,4 @@
 
 bool intersects(const vec3 &ray, const vec3 &ray_origin, const BBox &bbox, vec2 &intersections);
 bool intersects(const vec3 &ray, const vec3 &ray_origin, const BBox &bbox);
+bool intersects(vec3 from_pos, vec3 ray, Mesh &mesh, vec2 &intersections);

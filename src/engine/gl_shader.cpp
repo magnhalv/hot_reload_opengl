@@ -239,6 +239,7 @@ GLenum GLShaderType_from_file_name(const char *file_name) {
 void GLShaderProgram::useProgram() const {
     assert(_handle != 0);
     // TODO: HANDLE CAN BE INVALID ON PLAYBACK
+    gl->use_program(0);
     gl->use_program(_handle);
     auto err = gl->get_error();
     if (err != GL_NO_ERROR) {
@@ -253,17 +254,19 @@ auto GLVao::init() -> void {
 
 auto GLVao::destroy() -> void {
     gl->delete_vertex_array(1, &handle);
+    gl->bind_vertex_array(0);
 }
 
 auto GLVao::bind() const -> void {
     gl->bind_vertex_array(handle);
 }
 
-auto GLVao::add_buffer(void *data, GLsizeiptr size, u32 index, i32 stride, GLbitfield flags) -> void {
+auto GLVao::add_buffer(void *data, GLsizeiptr size, i32 num_entries, i32 stride, u32 index, GLbitfield flags) -> void {
     assert(num_buffers < Max_Buffers);
     auto &buf = buffers[num_buffers++];
     buf.data = data;
     buf.size = size;
+    buf.num_entries = num_entries;
     buf.index = index;
     buf.stride = stride;
     buf.flags = flags;
@@ -279,7 +282,7 @@ auto GLVao::load_buffers() -> void {
         gl->vertex_array_vertex_buffer(handle, buffer.index, buffer.handle, 0, buffer.stride);
         // Enables vertex attribute 1
         gl->enable_vertex_array_attrib(handle, buffer.index);
-        gl->vertex_array_attrib_format(handle, buffer.index, 3, GL_FLOAT, GL_FALSE, 0);
+        gl->vertex_array_attrib_format(handle, buffer.index, buffer.num_entries, GL_FLOAT, GL_FALSE, 0);
         // Makes vertex attribute available in shader layout=buffer.index
         gl->vertex_array_attrib_binding(handle, buffer.index, buffer.index);
     }

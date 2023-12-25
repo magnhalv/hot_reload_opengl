@@ -22,6 +22,7 @@ layout (location=0) out vec4 out_FragColor;
 void main()
 {
     vec3 omni_pos = omni_pos_vec4.xyz;
+
     float inv_omni_radius = omni_pos_vec4.w;
 
     vec3 eye_pos = eye_pos_vec4.xyz;

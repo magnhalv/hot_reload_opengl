@@ -9,155 +9,271 @@
 #include "player.h"
 #include "array.h"
 #include "ray.h"
+#include "renderer.h"
 
 GLFunctions *gl = nullptr;
 Platform *platform = nullptr;
 
-const i32 meshes_to_draw = 3;
 
-vec3 get_mouse_ray(const EngineInput &input, const mat4 &view_matrix, const mat4 &inv_perspective_matrix)
-{
-    mat4 inv_view_matrix = inverse(view_matrix);
+auto Pointer::update_pos(const MouseRaw &raw, i32 client_width, i32 client_height) -> void {
+    // TODO: Sensitivity must be moved somewhere else
+    const f32 sensitivity = 2.0;
+    const f32 dx = static_cast<f32>(raw.dx) * sensitivity;
+    const f32 dy = static_cast<f32>(raw.dy) * sensitivity;
 
-    f32 normalized_x = ((2.0f * input.input.mouse.x) / input.client_width) - 1;
-    f32 normalized_y = (1.0f - ((2.0f * input.input.mouse.y) / input.client_height));
+    x = min(max(dx + x, 0.0f), static_cast<f32>(client_width));
+    y = min(max(dy + y, 0.0f), static_cast<f32>(client_height));
+}
+
+auto Pointer::update_ray(const mat4 &view, const mat4 &inv_projection, i32 client_width, i32 client_height) -> void {
+    mat4 inv_view_matrix = inverse(view);
+
+    f32 normalized_x = ((2.0f * static_cast<f32>(x)) / static_cast<f32>(client_width)) - 1;
+    f32 normalized_y = (1.0f - ((2.0f * static_cast<f32>(y)) / static_cast<f32>(client_height)));
 
     vec4 mouse_pos = vec4(normalized_x, normalized_y, -1.0f, 1.f);
 
-    vec4 mouse_eye_coords = inv_perspective_matrix * mouse_pos;
+    vec4 mouse_eye_coords = inv_projection * mouse_pos;
     mouse_eye_coords.z = -1.0f;
     mouse_eye_coords.w = 0.0f;
 
-    vec3 mouse_world_coords = normalized(to_vec3(inv_view_matrix * mouse_eye_coords));
-    return mouse_world_coords;
+    ray = normalized(to_vec3(inv_view_matrix * mouse_eye_coords));
+}
+
+
+inline auto to_ndc(i32 pixels, i32 range) -> f32 {
+    auto x = range / 2;
+    return (static_cast<f32>(pixels) / static_cast<f32>(x)) - 1;
+}
+
+inline f32 new_x(i32 x, i32 y, f32 degree) {
+    return cos(degree) * static_cast<f32>(x) - sin(degree) * static_cast<f32>(y);
+}
+
+inline f32 new_y(i32 x, i32 y, f32 degree) {
+    return sin(degree) * static_cast<f32>(x) + cos(degree) * static_cast<f32>(y);
 }
 
 void update_and_render(EngineMemory *memory, EngineInput *app_input) {
     auto *state = (EngineState *) memory->permanent;
     const f32 ratio = static_cast<f32>(app_input->client_width) / static_cast<f32>(app_input->client_height);
 
-    auto &program = asset_manager->shader_programs[0];
+    auto &mesh_program = asset_manager->shader_programs[0];
     auto &single_color = asset_manager->shader_programs[1];
-    asset_manager->num_shader_programs = 2;
+    auto &cursor_program = asset_manager->shader_programs[2];
+    asset_manager->num_shader_programs = 3;
 
     [[unlikely]]
     if (!state->is_initialized) {
         log_info("Initializing...");
 
-        state->permanent.init(static_cast<u8 *>(memory->permanent) + sizeof(EngineState),
-                          Permanent_Memory_Block_Size - sizeof(EngineState));
+        state->permanent.init(
+                static_cast<u8 *>(memory->permanent) + sizeof(EngineState),
+                Permanent_Memory_Block_Size - sizeof(EngineState));
+
+        state->camera.init(-90.0f, 0.0f, vec3(2.0f, 5.0f, 10.0f));
+
+        state->pointer.x = static_cast<f32>(app_input->client_width) / 2.0f;
+        state->pointer.y = static_cast<f32>(app_input->client_height) / 2.0f;
+
+
+        // Load in meshes
         const int num_meshes = 3;
         state->meshes.init(static_cast<Mesh *>(state->permanent.allocate(sizeof(Mesh) * num_meshes)), num_meshes);
 
         import_mesh("assets/meshes/asset_Cube.fbx", &state->meshes[0]);
+        state->meshes[0].id = 1;
         import_mesh("assets/meshes/asset_Sphere.fbx", &state->meshes[1]);
         state->meshes[1].transform.position.x = -10;
+        state->meshes[1].id = 2;
         import_mesh("assets/meshes/asset_Suzanne.fbx", &state->meshes[2]);
         state->meshes[2].transform.position.x = 10;
+        state->meshes[2].id = 3;
 
-        program.initialize(R"(.\assets\shaders\mesh.vert)", R"(.\assets\shaders\basic_light.frag)");
-        program.add_uniform_buffer(&state->mvp, sizeof(glm::mat4), 0, 0);
-        program.add_uniform_buffer(&state->light, sizeof(vec4), 1, 0);
+        mesh_program.initialize(R"(.\assets\shaders\mesh.vert)", R"(.\assets\shaders\phong.frag)");
+        mesh_program.add_uniform_buffer(&state->mvp, sizeof(mat4), 0, 0);
+        mesh_program.add_uniform_buffer(&state->light, sizeof(LightData), 1, 0);
+        mesh_program.add_uniform_buffer(&state->material, sizeof(Material), 2, 0);
 
         single_color.initialize(R"(.\assets\shaders\mesh.vert)", R"(.\assets\shaders\single_color.frag)");
-        single_color.add_uniform_buffer(&state->mvp, sizeof(glm::mat4), 0, 0);
+        single_color.add_uniform_buffer(&state->mvp, sizeof(mat4), 0, 0);
 
-        state->camera.init(-90.0f, 0.0f, vec3(2.0f, 5.0f, 10.0f));
+        cursor_program.initialize(R"(.\assets\shaders\basic_2d.vert)", R"(.\assets\shaders\single_color.frag)");
+
 
         for (auto &mesh: state->meshes) {
             mesh.vao.init();
             mesh.vao.bind();
 
-            auto data_size = static_cast<GLsizeiptr>(sizeof(glm::vec3) * mesh.num_vertices); // NOLINT
+            auto data_size = static_cast<GLsizeiptr>(sizeof(vec3) * mesh.num_vertices); // NOLINT
             assert(mesh.num_vertices == mesh.num_normals);
 
-            mesh.vao.add_buffer(mesh.vertices, data_size, 0, sizeof(vec3), 0);
-            mesh.vao.add_buffer(mesh.normals, data_size, 1, sizeof(vec3), 0);
+            mesh.vao.add_buffer(mesh.vertices, data_size, 3, sizeof(vec3), 0, 0);
+            mesh.vao.add_buffer(mesh.normals, data_size, 3, sizeof(vec3), 1, 0);
             mesh.vao.load_buffers();
         }
+
+        state->camera.update_cursor(0, 0);
 
         state->is_initialized = true;
     }
 
+    state->material = get_material("wood");
+
     state->permanent.check_integrity();
     asset_manager->update_if_changed();
-
-    // Start application
-    program.useProgram();
-
-    gl->clear_color(1.0f, 0.6f, 0.0f, 0.0f);
-    gl->clear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
-    state->camera.update_cursor(static_cast<f32>(app_input->input.mouse.dx),
-                                static_cast<f32>(app_input->input.mouse.dy));
-    //state->camera.update_keyboard(*app_input->input);
-    update_player(state, app_input);
-
-    gl->viewport(0, 0, app_input->client_width, app_input->client_height);
-
-    gl->enable(GL_DEPTH_TEST);
-    gl->enable(GL_STENCIL_TEST);
-    gl->stencil_mask(0xFF);
-    gl->clear(GL_STENCIL_BUFFER_BIT);
-    gl->stencil_func(GL_ALWAYS, 1, 0xFF);
-    gl->stencil_op(GL_KEEP, GL_KEEP, GL_REPLACE);
 
     const auto projection = perspective(45.0f, ratio, 0.1f, 100.0f);
     const auto inv_projection = inverse(projection);
     const auto view = state->camera.get_view();
     const auto pv = projection * view;
 
-    auto mouse_ray_w = get_mouse_ray(*app_input, view, inv_projection);
+    Pointer *pointer = &state->pointer;
+    const MouseRaw *mouse = &app_input->input.mouse_raw;
 
+
+    Mesh *hovered_mesh = nullptr;
     for (auto &mesh: state->meshes) {
-        auto bbox = mesh.get_bbox();
-        const mat4 m = mesh.transform.to_mat4();
-        vec3 ray_local_origin = to_vec3(inverse(m) * to_vec4(state->camera.get_position()));
-
-        Transform t = mesh.transform; // wtf is this
-        t.position = vec3();
-        t.scale = vec3(1, 1, 1);
-        vec3 local_mouse_ray = to_vec3(inverse(t.to_mat4()) * to_vec4(mouse_ray_w));
-
-        if (intersects(local_mouse_ray, ray_local_origin, bbox)) {
-            printf("Hit!\n");
+        // TODO: Check which on is in front
+        vec2 intersections;
+        if (intersects(state->camera.get_position(), pointer->ray, mesh, intersections)) {
+            hovered_mesh = &mesh;
         }
     }
 
+    switch (state->pointer_mode) {
+        case PointerMode::NORMAL:
+            if (mouse->left.is_pressed_this_frame()) {
+                if (hovered_mesh == nullptr) {
+                    state->pointer_mode = PointerMode::LOOK_AROUND;
+                }
+                else {
+                    state->pointer_mode = PointerMode::GRAB;
+                }
+            }
+            break;
+        case PointerMode::LOOK_AROUND:
+        case PointerMode::GRAB: {
+            if (mouse->left.is_released_this_frame()) {
+                state->pointer_mode = PointerMode::NORMAL;
+            }
+        }
+            break;
+    }
+
+    if (state->pointer_mode == PointerMode::NORMAL || state->pointer_mode == PointerMode::GRAB) {
+        state->pointer.update_pos(*mouse, app_input->client_width, app_input->client_height);
+    }
+    else {
+        state->camera.update_cursor(static_cast<f32>(mouse->dx), static_cast<f32>(mouse->dy));
+    }
+
+    state->pointer.update_ray(view, inv_projection, app_input->client_width, app_input->client_height);
+
+
+    Mesh floor;
+    floor.num_vertices = 4;
+    floor.vertices[0] = vec3(F32_MAX, 0, F32_MAX);
+    floor.vertices[1] = vec3(-F32_MAX, 0, F32_MAX);
+    floor.vertices[2] = vec3(-F32_MAX, 0, -F32_MAX);
+    floor.vertices[3] = vec3(F32_MAX, 0, -F32_MAX);
+
+    vec2 floor_intersections;
+    if (intersects(state->camera.get_position(), pointer->ray, floor, floor_intersections)
+        && state->pointer_mode == PointerMode::GRAB
+        && hovered_mesh != nullptr) {
+        vec3 location = (pointer->ray * floor_intersections.x) + state->camera.get_position();
+        hovered_mesh->transform.position = location;
+    }
+
+    const Light light = {
+            .position_ws = vec3(0, 2.0f, 2.0f),
+            .radius = 3.0f,
+            .color = vec3(1.0, 1.0, 1.0),
+    };
+
+    // region Render setup
+    gl->enable(GL_DEPTH_TEST);
+    gl->clear_color(0.0f, 0.0f, 0.0f, 0.0f);
+    gl->clear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+    gl->viewport(0, 0, app_input->client_width, app_input->client_height);
+    // endregion
+
+    // region Render
+    mesh_program.useProgram();
     for (auto &mesh: state->meshes) {
-        mesh.vao.bind();
+        if (hovered_mesh != nullptr && mesh.id == hovered_mesh->id && state->pointer_mode != PointerMode::LOOK_AROUND) {
+            continue;
+        }
+
         const mat4 m = mesh.transform.to_mat4();
-
+        state->light = light.to_data(inverse(m), state->camera.get_position());
         state->mvp = pv * m;
-        state->light = vec4(0.0f, 1.0f, 5.0f, 0.0f);
 
-        program.update_dynamic_buffers();
+        mesh.vao.bind();
+        mesh_program.update_dynamic_buffers();
 
         gl->draw_arrays(GL_TRIANGLES, 0, mesh.num_vertices);
     }
 
-    gl->stencil_func(GL_NOTEQUAL, 1, 0xFF);
-    gl->stencil_mask(0x00);
-    gl->disable(GL_DEPTH_TEST);
-    single_color.useProgram();
-    for (auto &mesh: state->meshes) {
-        mesh.vao.bind();
-        auto t = mesh.transform;
+    if (hovered_mesh != nullptr && state->pointer_mode != PointerMode::LOOK_AROUND) {
+        enable_stencil_test();
+
+        const mat4 m = hovered_mesh->transform.to_mat4();
+        state->light = light.to_data(inverse(m), state->camera.get_position());
+        state->mvp = pv * m;
+
+        hovered_mesh->vao.bind();
+        mesh_program.update_dynamic_buffers();
+        gl->draw_arrays(GL_TRIANGLES, 0, hovered_mesh->num_vertices);
+
+        enable_outline();
+
+        single_color.useProgram();
+
+        hovered_mesh->vao.bind();
+        auto t = hovered_mesh->transform;
         t.scale.x = 1.1;
         t.scale.y = 1.1;
         t.scale.z = 1.1;
-        const mat4 m = t.to_mat4();
-        const mat4 v = state->camera.get_view();
-        const mat4 p = perspective(45.0f, ratio, 0.1f, 100.0f);
-        state->mvp = p * v * m;
 
+        state->mvp = pv * t.to_mat4();
         single_color.update_dynamic_buffers();
+        gl->draw_arrays(GL_TRIANGLES, 0, hovered_mesh->num_vertices);
 
-        gl->draw_arrays(GL_TRIANGLES, 0, mesh.num_vertices);
+        disable_stencil_test();
     }
 
-    gl->disable(GL_STENCIL_TEST);
-    gl->enable(GL_DEPTH_TEST);
+
+    // region Draw cursor
+    if (state->pointer_mode != PointerMode::LOOK_AROUND) {
+        // TODO Fix this, worst implementation ever
+        i32 h = app_input->client_height;
+        i32 w = app_input->client_width;
+        i32 x = state->pointer.x;
+        i32 y = state->pointer.y;
+        f32 cursor_vertices[] = {
+                to_ndc(x, w), -to_ndc(y, h),
+                to_ndc(-new_x(10, 20, 0.78) + x, w), -to_ndc(y + new_y(10, 20, 0.78), h),
+                to_ndc(-new_x(-10, 20, 0.78) + x, w), -to_ndc(y + new_y(-10, 20, 0.78), h)
+        };
+
+        cursor_program.useProgram();
+        GLVao cursor_vao{};
+        cursor_vao.init();
+        cursor_vao.bind();
+        cursor_vao.add_buffer(cursor_vertices, sizeof(cursor_vertices), 2, sizeof(vec2), 0, 0);
+        cursor_vao.load_buffers();
+
+        gl->draw_arrays(GL_TRIANGLES, 0, 3);
+        cursor_vao.destroy();
+    }
+    // endregion
+
+    // endregion
+
+    gl->use_program(0);
+    gl->bind_vertex_array(0);
 
     GLenum err;
     bool found_error = false;

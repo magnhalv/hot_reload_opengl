@@ -83,6 +83,7 @@ struct EngineMemory {
 struct EngineInput {
     i32 client_width;
     i32 client_height;
+    f32 t;
     f32 dt;
     UserInput input;
 };

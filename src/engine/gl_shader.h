@@ -10,7 +10,7 @@
 #include "assets.h"
 
 const i32 Shader_Path_Max_Length = 512;
-const u32 Max_Buffers = 2;
+const u32 Max_Buffers = 3;
 
 struct Shader {
     char path[Shader_Path_Max_Length];
@@ -25,18 +25,22 @@ struct GLUniformBuffer {
     GLbitfield flags;
 };
 
-struct GLShaderProgram
-{
+struct GLShaderProgram {
 public:
     auto initialize(const char *vertex_path, const char *fragment_path) -> bool;
+
     auto useProgram() const -> void;
+
     auto free() -> void;
+
     [[nodiscard]] GLuint getHandle() const { return _handle; }
 
     auto set_uniform(const char *name, const glm::vec4 &vec) const -> void;
+
     auto relink_if_changed() -> void;
 
     auto add_uniform_buffer(void *data, GLsizeiptr size, u32 index, GLbitfield flags) -> bool;
+
     auto update_dynamic_buffers() const -> void;
 
 private:
@@ -53,9 +57,10 @@ private:
 struct GLBuffer {
     u32 handle;
     void *data;
-    u32 index;
-    i32 stride;
     GLsizeiptr size;
+    i32 num_entries;
+    i32 stride;
+    u32 index;
     GLbitfield flags;
 };
 
@@ -67,9 +72,8 @@ struct GLVao {
     auto init() -> void;
     auto destroy() -> void;
     auto bind() const -> void;
-
-    auto add_buffer(void *data, GLsizeiptr size, u32 index, i32 stride, GLbitfield flags) -> void;
+    auto add_buffer(void *data, GLsizeiptr size, i32 num_entries, i32 stride, u32 index, GLbitfield flags) -> void;
     auto load_buffers() -> void;
 };
 
-GLenum GLShaderType_from_file_name(const char* file_name);
+GLenum GLShaderType_from_file_name(const char *file_name);

@@ -313,7 +313,7 @@ void win32_load_dll(EngineFunctions *functions) {
     while (!CopyFile(dll_path, dll_to_load_path, FALSE)) {
         DWORD error = GetLastError();
         printf("Failed to copy %s to %s. Error code: %lu\n", dll_path, dll_to_load_path, error);
-        //exit(1);
+        // exit(1);
         // TODO: Make this more airtight
     }
 
@@ -361,8 +361,8 @@ void win32_process_keyboard_message(ButtonState &new_state, bool is_down) {
 void win32_process_pending_messages(HWND hwnd, bool &is_running, UserInput &new_input, UserInput &old_input) {
     MSG message;
 
-    new_input.mouse.dx = 0;
-    new_input.mouse.dy = 0;
+    new_input.mouse_raw.dx = 0;
+    new_input.mouse_raw.dy = 0;
     while (PeekMessage(&message, hwnd, 0, 0, PM_REMOVE)) {
         switch (message.message) {
             case WM_QUIT: {
@@ -382,11 +382,27 @@ void win32_process_pending_messages(HWND hwnd, bool &is_running, UserInput &new_
                 auto *raw = (RAWINPUT *) lpb;
 
                 if (raw->header.dwType == RIM_TYPEMOUSE) {
-                    int xPosRelative = raw->data.mouse.lLastX;
-                    int yPosRelative = raw->data.mouse.lLastY;
-                    new_input.mouse.dx = xPosRelative;
-                    new_input.mouse.dy = yPosRelative;
-                    // Process the mouse movements...
+                    int dx = raw->data.mouse.lLastX;
+                    int dy = raw->data.mouse.lLastY;
+                    new_input.mouse_raw.dx = dx;
+                    new_input.mouse_raw.dy = dy;
+
+                    if (raw->data.mouse.usButtonFlags & RI_MOUSE_LEFT_BUTTON_DOWN) {
+                        new_input.mouse_raw.buttons[0].ended_down = true;
+                        new_input.mouse_raw.buttons[0].half_transition_count++;
+                    }
+                    if (raw->data.mouse.usButtonFlags & RI_MOUSE_RIGHT_BUTTON_DOWN) {
+                        new_input.mouse_raw.buttons[1].ended_down = true;
+                        new_input.mouse_raw.buttons[1].half_transition_count++;
+                    }
+                    if (raw->data.mouse.usButtonFlags & RI_MOUSE_LEFT_BUTTON_UP) {
+                        new_input.mouse_raw.buttons[0].ended_down = false;
+                        new_input.mouse_raw.buttons[0].half_transition_count++;
+                    }
+                    if (raw->data.mouse.usButtonFlags & RI_MOUSE_RIGHT_BUTTON_UP) {
+                        new_input.mouse_raw.buttons[1].ended_down = false;
+                        new_input.mouse_raw.buttons[1].half_transition_count++;
+                    }
                 }
 
                 delete[] lpb;
@@ -484,6 +500,48 @@ void GLAPIENTRY MessageCallback(GLenum source,
     }
 }
 
+void win32_bind_gl_funcs(GLFunctions *gl_funcs) {
+    gl_funcs->attach_shader = glAttachShader;
+    gl_funcs->detach_shader = glDetachShader;
+    gl_funcs->bind_buffer_base = glBindBufferBase;
+    gl_funcs->bind_vertex_array = glBindVertexArray;
+    gl_funcs->clear = glClear;
+    gl_funcs->clear_color = glClearColor;
+    gl_funcs->compile_shader = glCompileShader;
+    gl_funcs->create_buffers = glCreateBuffers;
+    gl_funcs->create_program = glCreateProgram;
+    gl_funcs->create_shader = glCreateShader;
+    gl_funcs->create_vertex_arrays = glCreateVertexArrays;
+    gl_funcs->delete_buffers = glDeleteBuffers;
+    gl_funcs->delete_program = glDeleteProgram;
+    gl_funcs->delete_shader = glDeleteShader;
+    gl_funcs->delete_vertex_array = glDeleteVertexArrays;
+    gl_funcs->draw_arrays = glDrawArrays;
+    gl_funcs->enable = glEnable;
+    gl_funcs->enable_vertex_array_attrib = glEnableVertexArrayAttrib;
+    gl_funcs->finish = glFinish;
+    gl_funcs->get_error = glGetError;
+    gl_funcs->get_program_info_log = glGetProgramInfoLog;
+    gl_funcs->get_shader_info_log = glGetShaderInfoLog;
+    gl_funcs->get_uniform_location = glGetUniformLocation;
+    gl_funcs->link_program = glLinkProgram;
+    gl_funcs->named_buffer_storage = glNamedBufferStorage;
+    gl_funcs->named_buffer_sub_data = glNamedBufferSubData;
+    gl_funcs->polygon_mode = glPolygonMode;
+    gl_funcs->shader_source = glShaderSource;
+    gl_funcs->uniform_4f = glUniform4f;
+    gl_funcs->use_program = glUseProgram;
+    gl_funcs->vertex_array_attrib_binding = glVertexArrayAttribBinding;
+    gl_funcs->vertex_array_attrib_format = glVertexArrayAttribFormat;
+    gl_funcs->vertex_array_vertex_buffer = glVertexArrayVertexBuffer;
+    gl_funcs->viewport = glViewport;
+    gl_funcs->get_programiv = glGetProgramiv;
+    gl_funcs->stencil_op = glStencilOp;
+    gl_funcs->stencil_func = glStencilFunc;
+    gl_funcs->stencil_mask = glStencilMask;
+    gl_funcs->disable = glDisable;
+}
+
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR szCmdLine, int iCmdShow) {
     /* CREATE WINDOW */
     WNDCLASSEX wndclass;
@@ -560,45 +618,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR szCmdLine,
         printf("Could not initialize GLAD\n");
         exit(1);
     } else {
-        gl_funcs.attach_shader = glAttachShader;
-        gl_funcs.detach_shader = glDetachShader;
-        gl_funcs.bind_buffer_base = glBindBufferBase;
-        gl_funcs.bind_vertex_array = glBindVertexArray;
-        gl_funcs.clear = glClear;
-        gl_funcs.clear_color = glClearColor;
-        gl_funcs.compile_shader = glCompileShader;
-        gl_funcs.create_buffers = glCreateBuffers;
-        gl_funcs.create_program = glCreateProgram;
-        gl_funcs.create_shader = glCreateShader;
-        gl_funcs.create_vertex_arrays = glCreateVertexArrays;
-        gl_funcs.delete_buffers = glDeleteBuffers;
-        gl_funcs.delete_program = glDeleteProgram;
-        gl_funcs.delete_shader = glDeleteShader;
-        gl_funcs.delete_vertex_array = glDeleteVertexArrays;
-        gl_funcs.draw_arrays = glDrawArrays;
-        gl_funcs.enable = glEnable;
-        gl_funcs.enable_vertex_array_attrib = glEnableVertexArrayAttrib;
-        gl_funcs.finish = glFinish;
-        gl_funcs.get_error = glGetError;
-        gl_funcs.get_program_info_log = glGetProgramInfoLog;
-        gl_funcs.get_shader_info_log = glGetShaderInfoLog;
-        gl_funcs.get_uniform_location = glGetUniformLocation;
-        gl_funcs.link_program = glLinkProgram;
-        gl_funcs.named_buffer_storage = glNamedBufferStorage;
-        gl_funcs.named_buffer_sub_data = glNamedBufferSubData;
-        gl_funcs.polygon_mode = glPolygonMode;
-        gl_funcs.shader_source = glShaderSource;
-        gl_funcs.uniform_4f = glUniform4f;
-        gl_funcs.use_program = glUseProgram;
-        gl_funcs.vertex_array_attrib_binding = glVertexArrayAttribBinding;
-        gl_funcs.vertex_array_attrib_format = glVertexArrayAttribFormat;
-        gl_funcs.vertex_array_vertex_buffer = glVertexArrayVertexBuffer;
-        gl_funcs.viewport = glViewport;
-        gl_funcs.get_programiv = glGetProgramiv;
-        gl_funcs.stencil_op = glStencilOp;
-        gl_funcs.stencil_func = glStencilFunc;
-        gl_funcs.stencil_mask = glStencilMask;
-        gl_funcs.disable = glDisable;
+        win32_bind_gl_funcs(&gl_funcs);
     }
 
     auto _wglGetExtensionsStringEXT = (PFNWGLGETEXTENSIONSSTRINGEXTPROC) wglGetProcAddress(
@@ -629,7 +649,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR szCmdLine,
     glEnable(GL_DEBUG_OUTPUT_SYNCHRONOUS); // Calls to the callback will be synchronous
     glDebugMessageCallback(MessageCallback, 0);
 
-    /* MEMORY */
+    // region Setup Memory
     EngineMemory memory = {};
 
     void *memory_block = VirtualAlloc(nullptr, // TODO: Might want to set this
@@ -644,16 +664,18 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR szCmdLine,
     memory.permanent = memory_block;
     memory.transient = (u8 *) memory.permanent + Permanent_Memory_Block_Size;
     memory.asset = (u8 *) memory.permanent + Permanent_Memory_Block_Size + Transient_Memory_Block_Size;
+    //endregion
 
+    // region Setup Input
     EngineInput app_input = {};
     EngineFunctions app_functions = {};
 
-    /* INPUT */
     RAWINPUTDEVICE mouse;
     mouse.usUsagePage = 0x01;          // HID_USAGE_PAGE_GENERIC
     mouse.usUsage = 0x02;              // HID_USAGE_GENERIC_MOUSE
-    mouse.dwFlags = RIDEV_NOLEGACY;    // adds mouse and also ignores legacy mouse messages
+    mouse.dwFlags = RIDEV_NOLEGACY;    // adds mouse and also ignores legacy mouse messages, which hides the cursor
     mouse.hwndTarget = hwnd;
+    ShowCursor(FALSE);
 
     if (RegisterRawInputDevices(&mouse, 1, sizeof(mouse)) == FALSE) {
         exit(1);
@@ -663,13 +685,15 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR szCmdLine,
     u32 curr_input_idx = 0;
     auto *current_input = &inputs[curr_input_idx];
     auto *previous_input = &inputs[curr_input_idx + 1];
+    // endregion
 
-
+    // region Set platform callbacks
     Platform platform = {};
     platform.get_file_last_modified = &win32_file_last_modified;
     platform.get_file_size = &win32_file_size;
     platform.read_file = &win32_read_text_file;
     platform.debug_print_readable_timestamp = &win32_debug_print_readable_timestamp;
+    // endregion
 
     /* MAIN LOOP */
     auto is_running = true;
@@ -682,6 +706,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR szCmdLine,
     while (is_running) {
         DWORD this_tick = GetTickCount();
         app_input.dt = float(this_tick - last_tick) * 0.001f; // to seconds
+        app_input.t += app_input.dt;
         last_tick = this_tick;
 
         if (win32_should_reload_dll(&app_functions)) {
@@ -689,15 +714,30 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR szCmdLine,
             win32_load_dll(&app_functions);
             app_functions.load(&gl_funcs, &platform, &memory);
         }
+        RECT client_rect;
+        GetClientRect(hwnd, &client_rect);
+        app_input.client_height = client_rect.bottom - client_rect.top;
+        app_input.client_width = client_rect.right - client_rect.left;
 
-        RECT clientRect;
-        GetClientRect(hwnd, &clientRect);
-        app_input.client_height = clientRect.bottom - clientRect.top;
-        app_input.client_width = clientRect.right - clientRect.left;
+        {
+            // Lock cursor to screen
+            POINT top_left = {client_rect.left, client_rect.top};
+            POINT bottom_right = {client_rect.right, client_rect.bottom};
+
+            ClientToScreen(hwnd, &top_left);
+            ClientToScreen(hwnd, &bottom_right);
+            RECT screen_rect = {
+                    .left = top_left.x,
+                    .top = top_left.y,
+                    .right = bottom_right.x,
+                    .bottom = bottom_right.y,
+            };
+            ClipCursor(&screen_rect);
+        }
 
         win32_process_pending_messages(hwnd, is_running, *current_input, *previous_input);
 
-        if (current_input->r.is_pressed()) {
+        if (current_input->r.is_pressed_this_frame()) {
             if (!is_recording) {
                 auto is_success = win32_start_recording(&memory, recording);
                 if (is_success) {
@@ -713,7 +753,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR szCmdLine,
             }
         }
 
-        if (current_input->p.is_pressed() && !is_recording) {
+        if (current_input->p.is_pressed_this_frame() && !is_recording) {
             if (!is_playing_back) {
                 auto is_success = win32_init_playback(playback);
                 if (is_success) {

@@ -46,6 +46,6 @@ bool operator!=(const vec3& l, const vec3& r);
 void print_vec3(const vec3 &v);
 
 vec3 to_vec3(const vec4 &v);
-vec4 to_vec4(const vec3 &v);
+vec4 to_vec4(const vec3 &v, f32 w = 1.0);
 
 #endif
