@@ -3,8 +3,11 @@
 #include <cstdio>
 #include <string>
 
-#include "engine.h"
+#include "gl.h"
+#include "logger.h"
+#include "memory_arena.h"
 #include "gl_shader.h"
+#include "engine.h"
 
 auto print_shader_source(const char *text) -> void {
     int line = 1;
@@ -134,6 +137,7 @@ auto GLShaderProgram::create_program(const char *vertex_path, const char *fragme
 }
 
 auto GLShaderProgram::initialize(const char *vertex_path, const char *fragment_path) -> bool {
+    assert(_handle == 0);
     const auto vertex_length = strlen(vertex_path);
     const auto fragment_length = strlen(fragment_path);
 
@@ -143,8 +147,7 @@ auto GLShaderProgram::initialize(const char *vertex_path, const char *fragment_p
     const auto handle = create_program(vertex_path, fragment_path);
 
     if (handle == Gl_Invalid_Id) {
-        log_error("Failed to create shader program.");
-        return false;
+        crash_and_burn("Failed to create shader program.");
     }
 
     _handle = handle;
@@ -238,8 +241,6 @@ GLenum GLShaderType_from_file_name(const char *file_name) {
 
 void GLShaderProgram::useProgram() const {
     assert(_handle != 0);
-    // TODO: HANDLE CAN BE INVALID ON PLAYBACK
-    gl->use_program(0);
     gl->use_program(_handle);
     auto err = gl->get_error();
     if (err != GL_NO_ERROR) {
@@ -261,14 +262,15 @@ auto GLVao::bind() const -> void {
     gl->bind_vertex_array(handle);
 }
 
-auto GLVao::add_buffer(void *data, GLsizeiptr size, i32 num_entries, i32 stride, u32 index, GLbitfield flags) -> void {
+auto GLVao::add_buffer(void *data, GLsizeiptr size, i32 num_entries, i32 stride, i32 offset, u32 index, GLbitfield flags) -> void {
     assert(num_buffers < Max_Buffers);
     auto &buf = buffers[num_buffers++];
     buf.data = data;
     buf.size = size;
     buf.num_entries = num_entries;
-    buf.index = index;
     buf.stride = stride;
+    buf.offset = offset;
+    buf.index = index;
     buf.flags = flags;
 }
 
@@ -279,7 +281,7 @@ auto GLVao::load_buffers() -> void {
         // Populates the buffer
         gl->named_buffer_storage(buffer.handle, buffer.size, buffer.data, 0);
         // TODO: handle offset (the 0)
-        gl->vertex_array_vertex_buffer(handle, buffer.index, buffer.handle, 0, buffer.stride);
+        gl->vertex_array_vertex_buffer(handle, buffer.index, buffer.handle, buffer.offset, buffer.stride);
         // Enables vertex attribute 1
         gl->enable_vertex_array_attrib(handle, buffer.index);
         gl->vertex_array_attrib_format(handle, buffer.index, buffer.num_entries, GL_FLOAT, GL_FALSE, 0);

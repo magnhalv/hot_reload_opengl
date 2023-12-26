@@ -52,6 +52,19 @@ struct GLFunctions {
     PFNGLSTENCILFUNCPROC stencil_func;
     PFNGLSTENCILMASKPROC stencil_mask;
     PFNGLDISABLEPROC disable;
+    PFNGLGENFRAMEBUFFERSPROC gen_framebuffers;
+    PFNGLBINDFRAMEBUFFERPROC bind_framebuffer;
+    PFNGLCHECKFRAMEBUFFERSTATUSPROC framebuffer_check_status;
+    PFNGLDELETEFRAMEBUFFERSPROC delete_framebuffers;
+    PFNGLGENTEXTURESPROC textures_gen;
+    PFNGLBINDTEXTUREPROC texture_bind;
+    PFNGLTEXIMAGE2DPROC tex_image_2d;
+    PFNGLTEXPARAMETERIPROC tex_parameter_i;
+    PFNGLFRAMEBUFFERTEXTURE2DPROC framebuffer_texture_2d;
+    PFNGLFRAMEBUFFERRENDERBUFFERPROC framebuffer_renderbuffer;
+    PFNGLRENDERBUFFERSTORAGEPROC renderbuffer_storage;
+    PFNGLBINDRENDERBUFFERPROC renderbuffer_bind;
+    PFNGLGENRENDERBUFFERSPROC renderbuffers_gen;
 };
 
 const u32 Gl_Invalid_Id = 0;

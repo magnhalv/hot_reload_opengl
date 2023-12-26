@@ -5,12 +5,14 @@
 #include <math/vec4.h>
 #include <math/mat4.h>
 
-#include "mesh.h"
-#include "memory_arena.h"
-#include "camera.h"
-#include "gl_shader.h"
 #include "asset_manager.h"
+#include "camera.h"
+#include "framebuffer.h"
+#include "gl.h"
+#include "gl_shader.h"
 #include "material.h"
+#include "memory_arena.h"
+#include "mesh.h"
 
 #include "allocators/pool_allocator.h"
 #include "array.h"
@@ -40,6 +42,8 @@ struct EngineState {
     MemoryArena transient;
     MemoryArena permanent;
 
+    Framebuffer framebuffer;
+    GLVao quad_vao{};
 
     // TODO: Should this be global state? Might need computable buffers
     LightData light;
@@ -50,7 +54,6 @@ struct EngineState {
     PointerMode pointer_mode;
 };
 
-extern GLFunctions *gl;
 extern Platform *platform;
 
 extern "C" __declspec(dllexport) void update_and_render(EngineMemory *memory, EngineInput *app_input);

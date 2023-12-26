@@ -11,7 +11,6 @@
 #include "ray.h"
 #include "renderer.h"
 
-GLFunctions *gl = nullptr;
 Platform *platform = nullptr;
 
 
@@ -61,8 +60,10 @@ void update_and_render(EngineMemory *memory, EngineInput *app_input) {
     auto &mesh_program = asset_manager->shader_programs[0];
     auto &single_color = asset_manager->shader_programs[1];
     auto &cursor_program = asset_manager->shader_programs[2];
-    asset_manager->num_shader_programs = 3;
+    auto &quad_program = asset_manager->shader_programs[3];
+    asset_manager->num_shader_programs = 4;
 
+    // region Initialize
     [[unlikely]]
     if (!state->is_initialized) {
         log_info("Initializing...");
@@ -71,7 +72,7 @@ void update_and_render(EngineMemory *memory, EngineInput *app_input) {
                 static_cast<u8 *>(memory->permanent) + sizeof(EngineState),
                 Permanent_Memory_Block_Size - sizeof(EngineState));
 
-        state->camera.init(-90.0f, 0.0f, vec3(2.0f, 5.0f, 10.0f));
+        state->camera.init(-90.0f, -27.0f, vec3(0.0f, 5.0f, 10.0f));
 
         state->pointer.x = static_cast<f32>(app_input->client_width) / 2.0f;
         state->pointer.y = static_cast<f32>(app_input->client_height) / 2.0f;
@@ -90,6 +91,8 @@ void update_and_render(EngineMemory *memory, EngineInput *app_input) {
         state->meshes[2].transform.position.x = 10;
         state->meshes[2].id = 3;
 
+        state->framebuffer.init(app_input->client_width, app_input->client_height);
+        // region Compile shaders
         mesh_program.initialize(R"(.\assets\shaders\mesh.vert)", R"(.\assets\shaders\phong.frag)");
         mesh_program.add_uniform_buffer(&state->mvp, sizeof(mat4), 0, 0);
         mesh_program.add_uniform_buffer(&state->light, sizeof(LightData), 1, 0);
@@ -100,6 +103,11 @@ void update_and_render(EngineMemory *memory, EngineInput *app_input) {
 
         cursor_program.initialize(R"(.\assets\shaders\basic_2d.vert)", R"(.\assets\shaders\single_color.frag)");
 
+        quad_program.initialize(R"(.\assets\shaders\quad.vert)", R"(.\assets\shaders\quad.frag)");
+
+        // endregion
+
+        // TODO: Handle change of screen width and height
 
         for (auto &mesh: state->meshes) {
             mesh.vao.init();
@@ -108,15 +116,36 @@ void update_and_render(EngineMemory *memory, EngineInput *app_input) {
             auto data_size = static_cast<GLsizeiptr>(sizeof(vec3) * mesh.num_vertices); // NOLINT
             assert(mesh.num_vertices == mesh.num_normals);
 
+            // TODO: Should be packed into a single buffer
             mesh.vao.add_buffer(mesh.vertices, data_size, 3, sizeof(vec3), 0, 0);
-            mesh.vao.add_buffer(mesh.normals, data_size, 3, sizeof(vec3), 1, 0);
+            mesh.vao.add_buffer(mesh.normals, data_size, 3, sizeof(vec3), 0, 1);
             mesh.vao.load_buffers();
         }
 
+        float quad_verticies[] = { // vertex attributes for a quad that fills the entire screen in Normalized Device Coordinates.
+                // positions   // texCoords
+                -1.0f,  1.0f,  0.0f, 1.0f,
+                -1.0f, -1.0f,  0.0f, 0.0f,
+                1.0f, -1.0f,  1.0f, 0.0f,
+
+                -1.0f,  1.0f,  0.0f, 1.0f,
+                1.0f, -1.0f,  1.0f, 0.0f,
+                1.0f,  1.0f,  1.0f, 1.0f
+        };
+
+        state->quad_vao.init();
+        state->quad_vao.bind();
+        state->quad_vao.add_buffer(quad_verticies, sizeof(quad_verticies), 2, 4*sizeof(f32), 0, 0);
+        state->quad_vao.add_buffer(quad_verticies, sizeof(quad_verticies), 2, 4*sizeof(f32), 2*sizeof(f32), 1);
+        state->quad_vao.load_buffers();
+
         state->camera.update_cursor(0, 0);
+
 
         state->is_initialized = true;
     }
+
+    // endregion
 
     state->material = get_material("wood");
 
@@ -188,11 +217,12 @@ void update_and_render(EngineMemory *memory, EngineInput *app_input) {
 
     const Light light = {
             .position_ws = vec3(0, 2.0f, 2.0f),
-            .radius = 3.0f,
+            .radius = 20.0f,
             .color = vec3(1.0, 1.0, 1.0),
     };
 
     // region Render setup
+    gl->bind_framebuffer(GL_FRAMEBUFFER, state->framebuffer.fbo);
     gl->enable(GL_DEPTH_TEST);
     gl->clear_color(0.0f, 0.0f, 0.0f, 0.0f);
     gl->clear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -270,6 +300,22 @@ void update_and_render(EngineMemory *memory, EngineInput *app_input) {
     }
     // endregion
 
+    // region Draw end quad
+    {
+        state->quad_vao.bind();
+        quad_program.useProgram();
+        gl->bind_framebuffer(GL_FRAMEBUFFER, 0);
+        gl->clear_color(1.0f, 1.0f, 1.0f, 1.0f);
+        gl->clear(GL_COLOR_BUFFER_BIT);
+        gl->disable(GL_DEPTH_TEST);
+
+        gl->texture_bind(GL_TEXTURE_2D, state->framebuffer.texture);
+        gl->draw_arrays(GL_TRIANGLES, 0, 6);
+
+        gl->texture_bind(GL_TEXTURE_2D, 0);
+    }
+    // endregion
+
     // endregion
 
     gl->use_program(0);
@@ -290,7 +336,7 @@ void update_and_render(EngineMemory *memory, EngineInput *app_input) {
 }
 
 void load(GLFunctions *in_gl, Platform *in_platform, EngineMemory *in_memory) {
-    gl = in_gl;
+    load_gl(in_gl);
     platform = in_platform;
 
     assert(sizeof(EngineState) < Permanent_Memory_Block_Size);

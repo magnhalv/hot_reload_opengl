@@ -540,6 +540,19 @@ void win32_bind_gl_funcs(GLFunctions *gl_funcs) {
     gl_funcs->stencil_func = glStencilFunc;
     gl_funcs->stencil_mask = glStencilMask;
     gl_funcs->disable = glDisable;
+    gl_funcs->gen_framebuffers = glGenFramebuffers;
+    gl_funcs->bind_framebuffer = glBindFramebuffer;
+    gl_funcs->framebuffer_check_status = glCheckFramebufferStatus;
+    gl_funcs->delete_framebuffers = glDeleteFramebuffers;
+    gl_funcs->textures_gen = glGenTextures;
+    gl_funcs->texture_bind = glBindTexture;
+    gl_funcs->tex_image_2d = glTexImage2D;
+    gl_funcs->tex_parameter_i = glTexParameteri;
+    gl_funcs->framebuffer_texture_2d = glFramebufferTexture2D;
+    gl_funcs->renderbuffers_gen = glGenRenderbuffers;
+    gl_funcs->renderbuffer_bind = glBindRenderbuffer;
+    gl_funcs->renderbuffer_storage = glRenderbufferStorage;
+    gl_funcs->framebuffer_renderbuffer = glFramebufferRenderbuffer;
 }
 
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR szCmdLine, int iCmdShow) {

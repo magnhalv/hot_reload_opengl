@@ -62,6 +62,7 @@ struct GLBuffer {
     i32 stride;
     u32 index;
     GLbitfield flags;
+    i32 offset;
 };
 
 struct GLVao {
@@ -70,9 +71,21 @@ struct GLVao {
     u32 num_buffers;
 
     auto init() -> void;
+
     auto destroy() -> void;
+
     auto bind() const -> void;
-    auto add_buffer(void *data, GLsizeiptr size, i32 num_entries, i32 stride, u32 index, GLbitfield flags) -> void;
+
+    auto add_buffer(
+            void *data,
+            GLsizeiptr size,
+            i32 num_entries,
+            i32 stride,
+            i32 offset,
+            u32 index,
+            GLbitfield flags = 0
+    ) -> void;
+
     auto load_buffers() -> void;
 };
 
