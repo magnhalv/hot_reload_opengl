@@ -223,7 +223,7 @@ void update_and_render(EngineMemory *memory, EngineInput *app_input) {
     };
 
     // region Render setup
-    gl->bind_framebuffer(GL_FRAMEBUFFER, state->ms_framebuffer.fbo);
+    state->ms_framebuffer.bind();
     gl->enable(GL_DEPTH_TEST);
     gl->clear_color(1.0f, 1.0f, 1.0f, 0.0f);
     gl->clear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
