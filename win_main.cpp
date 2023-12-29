@@ -552,7 +552,10 @@ void win32_bind_gl_funcs(GLFunctions *gl_funcs) {
     gl_funcs->renderbuffers_gen = glGenRenderbuffers;
     gl_funcs->renderbuffer_bind = glBindRenderbuffer;
     gl_funcs->renderbuffer_storage = glRenderbufferStorage;
+    gl_funcs->renderbuffer_storage_multisample = glRenderbufferStorageMultisample;
     gl_funcs->framebuffer_renderbuffer = glFramebufferRenderbuffer;
+    gl_funcs->tex_image_2d_multisample = glTexImage2DMultisample;
+    gl_funcs->framebuffer_blit = glBlitFramebuffer;
 }
 
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR szCmdLine, int iCmdShow) {

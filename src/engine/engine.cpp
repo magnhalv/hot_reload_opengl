@@ -92,6 +92,7 @@ void update_and_render(EngineMemory *memory, EngineInput *app_input) {
         state->meshes[2].id = 3;
 
         state->framebuffer.init(app_input->client_width, app_input->client_height);
+        state->ms_framebuffer.init(app_input->client_width, app_input->client_height);
         // region Compile shaders
         mesh_program.initialize(R"(.\assets\shaders\mesh.vert)", R"(.\assets\shaders\phong.frag)");
         mesh_program.add_uniform_buffer(&state->mvp, sizeof(mat4), 0, 0);
@@ -147,7 +148,7 @@ void update_and_render(EngineMemory *memory, EngineInput *app_input) {
 
     // endregion
 
-    state->material = get_material("wood");
+    state->material = get_material("metal");
 
     state->permanent.check_integrity();
     asset_manager->update_if_changed();
@@ -222,9 +223,9 @@ void update_and_render(EngineMemory *memory, EngineInput *app_input) {
     };
 
     // region Render setup
-    gl->bind_framebuffer(GL_FRAMEBUFFER, state->framebuffer.fbo);
+    gl->bind_framebuffer(GL_FRAMEBUFFER, state->ms_framebuffer.fbo);
     gl->enable(GL_DEPTH_TEST);
-    gl->clear_color(0.0f, 0.0f, 0.0f, 0.0f);
+    gl->clear_color(1.0f, 1.0f, 1.0f, 0.0f);
     gl->clear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     gl->viewport(0, 0, app_input->client_width, app_input->client_height);
     // endregion
@@ -302,6 +303,12 @@ void update_and_render(EngineMemory *memory, EngineInput *app_input) {
 
     // region Draw end quad
     {
+        const i32 w = app_input->client_width;
+        const i32 h = app_input->client_height;
+        gl->bind_framebuffer(GL_READ_FRAMEBUFFER, state->ms_framebuffer.fbo);
+        gl->bind_framebuffer(GL_DRAW_FRAMEBUFFER, state->framebuffer.fbo);
+        gl->framebuffer_blit(0, 0, w, h, 0, 0, w, h, GL_COLOR_BUFFER_BIT, GL_NEAREST);
+
         state->quad_vao.bind();
         quad_program.useProgram();
         gl->bind_framebuffer(GL_FRAMEBUFFER, 0);

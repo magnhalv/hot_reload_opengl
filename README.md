@@ -5,5 +5,5 @@ An example project for how to set up OpenGl with hot reloading.
 ## TODO
 
 * Anti-aliasing
-* Render to texture
+* Simple internal terminal
 * Grid

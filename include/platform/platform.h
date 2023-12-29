@@ -65,6 +65,9 @@ struct GLFunctions {
     PFNGLRENDERBUFFERSTORAGEPROC renderbuffer_storage;
     PFNGLBINDRENDERBUFFERPROC renderbuffer_bind;
     PFNGLGENRENDERBUFFERSPROC renderbuffers_gen;
+    PFNGLTEXIMAGE2DMULTISAMPLEPROC tex_image_2d_multisample;
+    PFNGLRENDERBUFFERSTORAGEMULTISAMPLEPROC renderbuffer_storage_multisample;
+    PFNGLBLITFRAMEBUFFERPROC framebuffer_blit;
 };
 
 const u32 Gl_Invalid_Id = 0;

@@ -43,6 +43,7 @@ struct EngineState {
     MemoryArena permanent;
 
     Framebuffer framebuffer;
+    MultiSampleFramebuffer ms_framebuffer;
     GLVao quad_vao{};
 
     // TODO: Should this be global state? Might need computable buffers
