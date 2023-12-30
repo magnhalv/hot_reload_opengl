@@ -385,7 +385,7 @@ void win32_process_pending_messages(HWND hwnd, bool &is_running, UserInput &new_
                     int dx = raw->data.mouse.lLastX;
                     int dy = raw->data.mouse.lLastY;
                     new_input.mouse_raw.dx = dx;
-                    new_input.mouse_raw.dy = dy;
+                    new_input.mouse_raw.dy = -dy;
 
                     if (raw->data.mouse.usButtonFlags & RI_MOUSE_LEFT_BUTTON_DOWN) {
                         new_input.mouse_raw.buttons[0].ended_down = true;
@@ -588,8 +588,8 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR szCmdLine,
 
     int screenWidth = GetSystemMetrics(SM_CXSCREEN);
     int screenHeight = GetSystemMetrics(SM_CYSCREEN);
-    int client_width = 1280;
-    int client_height = 720;
+    int client_width = 800;
+    int client_height = 600;
     RECT windowRect;
     SetRect(&windowRect, (screenWidth / 2) - (client_width / 2), (screenHeight / 2) - (client_height / 2),
             (screenWidth / 2) + (client_width / 2), (screenHeight / 2) + (client_height / 2));

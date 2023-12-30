@@ -32,7 +32,6 @@ vec2 intersections_on_axis(f32 origin, f32 direction, f32 axis_min, f32 axis_max
 }
 
 bool intersects(vec3 from_pos, vec3 ray, Mesh &mesh, vec2 &intersections) {
-    auto bbox = mesh.get_bbox();
     const mat4 mesh_trans = mesh.transform.to_mat4();
     vec3 from_pos_local = to_vec3(inverse(mesh_trans) * to_vec4(from_pos)); // move from_pos to mesh coord-space
 
@@ -40,7 +39,8 @@ bool intersects(vec3 from_pos, vec3 ray, Mesh &mesh, vec2 &intersections) {
     origin_transform.rotation = mesh.transform.rotation;
     vec3 ray_local = to_vec3(inverse(origin_transform.to_mat4()) * to_vec4(ray));
 
-    return intersects(ray_local, from_pos_local, mesh.get_bbox(), intersections);
+    auto bbox = mesh.get_bbox();
+    return intersects(ray_local, from_pos_local, bbox, intersections);
 }
 
 bool intersects(const vec3 &ray, const vec3 &ray_origin, const BBox &bbox, vec2 &intersections)

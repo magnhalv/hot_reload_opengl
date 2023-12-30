@@ -6,7 +6,6 @@
 #include "engine.h"
 #include "gl_shader.h"
 #include "asset_import.h"
-#include "player.h"
 #include "array.h"
 #include "ray.h"
 #include "renderer.h"
@@ -85,8 +84,8 @@ auto Pointer::update_pos(const MouseRaw &raw, i32 client_width, i32 client_heigh
 auto Pointer::update_ray(const mat4 &view, const mat4 &inv_projection, i32 client_width, i32 client_height) -> void {
     mat4 inv_view_matrix = inverse(view);
 
-    f32 normalized_x = ((2.0f * static_cast<f32>(x)) / static_cast<f32>(client_width)) - 1;
-    f32 normalized_y = (1.0f - ((2.0f * static_cast<f32>(y)) / static_cast<f32>(client_height)));
+    f32 normalized_x = ((2.0f * static_cast<f32>(x)) / static_cast<f32>(client_width)) - 1.0f;
+    f32 normalized_y = ((2.0f * static_cast<f32>(y)) / static_cast<f32>(client_height)) - 1.0f;
 
     vec4 mouse_pos = vec4(normalized_x, normalized_y, -1.0f, 1.f);
 
@@ -103,12 +102,12 @@ inline auto to_ndc(i32 pixels, i32 range) -> f32 {
     return (static_cast<f32>(pixels) / static_cast<f32>(x)) - 1;
 }
 
-inline f32 new_x(i32 x, i32 y, f32 degree) {
-    return cos(degree) * static_cast<f32>(x) - sin(degree) * static_cast<f32>(y);
+inline f32 new_x(f32 x, f32 y, f32 degree) {
+    return cos(degree) * x - sin(degree) * y;
 }
 
-inline f32 new_y(i32 x, i32 y, f32 degree) {
-    return sin(degree) * static_cast<f32>(x) + cos(degree) * static_cast<f32>(y);
+inline f32 new_y(f32 x, f32 y, f32 degree) {
+    return sin(degree) * x + cos(degree) * y;
 }
 
 void update_and_render(EngineMemory *memory, EngineInput *app_input) {
@@ -133,8 +132,8 @@ void update_and_render(EngineMemory *memory, EngineInput *app_input) {
 
         state->camera.init(-90.0f, -27.0f, vec3(0.0f, 5.0f, 10.0f));
 
-        state->pointer.x = static_cast<f32>(app_input->client_width) / 2.0f;
-        state->pointer.y = static_cast<f32>(app_input->client_height) / 2.0f;
+        state->pointer.x = 200;
+        state->pointer.y = 200;
 
 
         // Load in meshes
@@ -229,6 +228,7 @@ void update_and_render(EngineMemory *memory, EngineInput *app_input) {
         // TODO: Check which on is in front
         vec2 intersections;
         if (intersects(state->camera.get_position(), pointer->ray, mesh, intersections)) {
+            printf("It itersects\n");
             hovered_mesh = &mesh;
         }
     }
@@ -257,7 +257,6 @@ void update_and_render(EngineMemory *memory, EngineInput *app_input) {
     } else {
         state->camera.update_cursor(static_cast<f32>(mouse->dx), static_cast<f32>(mouse->dy));
     }
-
     state->pointer.update_ray(view, inv_projection, app_input->client_width, app_input->client_height);
 
 
@@ -347,8 +346,8 @@ void update_and_render(EngineMemory *memory, EngineInput *app_input) {
         f32 y = state->pointer.y;
         f32 cursor_vertices[6] = {
                 x, y,
-                x - 10, y - 20,
-                x + 10, y - 20
+                x + new_x(-10.0f, -20.0f, 45.0f), y + new_y( - 10,  - 20, 45.0f),
+                x + new_x(10.0f, -20.0f, 45.0f), y+ new_y(10, - 20, 45.0f),
         };
         //cli_draw(w, h);
         GLVao cursor_vao{};
