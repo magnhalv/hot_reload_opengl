@@ -30,8 +30,14 @@ struct Pointer {
 
     vec3 ray; // Mouse ray in world space from the camera enabled at the start of the frame
     auto update_pos(const MouseRaw &raw, i32 client_width, i32 client_height) -> void;
-    /// NOTE:: Assumes
     auto update_ray(const mat4 &view, const mat4 &inv_projection, i32 client_width, i32 client_height) -> void;
+};
+
+struct Character {
+    u32 texture_id{};
+    ivec2 size;
+    ivec2 bearing;
+    u32 advance{};
 };
 
 struct EngineState {
@@ -53,6 +59,7 @@ struct EngineState {
 
     // Gameplay
     PointerMode pointer_mode;
+    Array<Character> font;
 };
 
 extern Platform *platform;

@@ -68,6 +68,17 @@ struct GLFunctions {
     PFNGLTEXIMAGE2DMULTISAMPLEPROC tex_image_2d_multisample;
     PFNGLRENDERBUFFERSTORAGEMULTISAMPLEPROC renderbuffer_storage_multisample;
     PFNGLBLITFRAMEBUFFERPROC framebuffer_blit;
+    PFNGLBINDBUFFERPROC bind_buffer;
+    PFNGLBUFFERDATAPROC buffer_data;
+    PFNGLENABLEVERTEXATTRIBARRAYPROC enable_vertex_attrib_array;
+    PFNGLVERTEXATTRIBPOINTERPROC vertex_attrib_pointer;
+    PFNGLBINDTEXTUREPROC bind_texture;
+    PFNGLBUFFERSUBDATAPROC buffer_sub_data;
+    PFNGLACTIVETEXTUREPROC active_texture;
+    PFNGLGENTEXTURESPROC gen_textures;
+    PFNGLPIXELSTOREIPROC pixel_store_i;
+    PFNGLUNIFORMMATRIX4FVPROC gl_uniform_matrix_4_fv;
+    PFNGLBLENDFUNCPROC blend_func;
 };
 
 const u32 Gl_Invalid_Id = 0;

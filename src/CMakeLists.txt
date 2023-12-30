@@ -34,11 +34,14 @@ set(ASSIMP_BUILD_GLTF_IMPORTER OFF CACHE BOOL "")
 include_directories(deps/src/assimp/include)
 add_subdirectory(deps/src/assimp)
 
+include_directories(deps/src/freetype/include)
+add_subdirectory(deps/src/freetype)
+
 add_subdirectory(math)
 
 # END ASSIMP
 
-target_link_libraries(Engine assimp math)
+target_link_libraries(Engine assimp math freetype)
 set_target_properties(Engine PROPERTIES DEBUG_POSTFIX "")
 
 set_target_properties(Engine PROPERTIES

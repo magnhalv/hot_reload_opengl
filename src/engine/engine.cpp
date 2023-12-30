@@ -10,8 +10,66 @@
 #include "array.h"
 #include "ray.h"
 #include "renderer.h"
+#include "cli.h"
+
+#include <ft2build.h>
+#include FT_FREETYPE_H
 
 Platform *platform = nullptr;
+
+auto load_font(MemoryArena &arena) -> Array<Character> {
+    FT_Library ft;
+    if (FT_Init_FreeType(&ft)) {
+        crash_and_burn("Failed to initialize FreeType library.");
+    }
+
+    FT_Face face;
+    if (FT_New_Face(ft, "assets/fonts/ubuntu/Ubuntu-Regular.ttf", 0, &face)) {
+        crash_and_burn("Failed to load Ubuntu font.");
+    }
+    FT_Set_Pixel_Sizes(face, 0, 48);
+
+    gl->pixel_store_i(GL_UNPACK_ALIGNMENT, 1); // disable byte-alignment restriction
+
+    Array<Character> characters;
+    characters.init(arena, 128);
+    i32 i = 0;
+    for (unsigned char c = 0; c < 128; c++) {
+        if (FT_Load_Char(face, c, FT_LOAD_RENDER)) {
+            crash_and_burn("FreeType: Failed to load glyph.");
+        }
+        // generate texture
+        u32 texture;
+        gl->gen_textures(1, &texture);
+        gl->bind_texture(GL_TEXTURE_2D, texture);
+        gl->tex_image_2d(
+                GL_TEXTURE_2D,
+                0,
+                GL_RED,
+                face->glyph->bitmap.width,
+                face->glyph->bitmap.rows,
+                0,
+                GL_RED,
+                GL_UNSIGNED_BYTE,
+                face->glyph->bitmap.buffer
+        );
+        // set texture options
+        gl->tex_parameter_i(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+        gl->tex_parameter_i(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+        gl->tex_parameter_i(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+        gl->tex_parameter_i(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+        // now store character for later use
+        characters[i++] = {
+                texture,
+                ivec2(face->glyph->bitmap.width, face->glyph->bitmap.rows),
+                ivec2(face->glyph->bitmap_left, face->glyph->bitmap_top),
+                static_cast<u32>(face->glyph->advance.x)
+        };
+    }
+    FT_Done_Face(face);
+    FT_Done_FreeType(ft);
+    return characters;
+}
 
 
 auto Pointer::update_pos(const MouseRaw &raw, i32 client_width, i32 client_height) -> void {
@@ -61,7 +119,8 @@ void update_and_render(EngineMemory *memory, EngineInput *app_input) {
     auto &single_color = asset_manager->shader_programs[1];
     auto &cursor_program = asset_manager->shader_programs[2];
     auto &quad_program = asset_manager->shader_programs[3];
-    asset_manager->num_shader_programs = 4;
+    auto &font_program = asset_manager->shader_programs[4];
+    asset_manager->num_shader_programs = 5;
 
     // region Initialize
     [[unlikely]]
@@ -106,6 +165,8 @@ void update_and_render(EngineMemory *memory, EngineInput *app_input) {
 
         quad_program.initialize(R"(.\assets\shaders\quad.vert)", R"(.\assets\shaders\quad.frag)");
 
+        font_program.initialize(R"(.\assets\shaders\font.vert)", R"(.\assets\shaders\font.frag)");
+
         // endregion
 
         // TODO: Handle change of screen width and height
@@ -125,24 +186,24 @@ void update_and_render(EngineMemory *memory, EngineInput *app_input) {
 
         float quad_verticies[] = { // vertex attributes for a quad that fills the entire screen in Normalized Device Coordinates.
                 // positions   // texCoords
-                -1.0f,  1.0f,  0.0f, 1.0f,
-                -1.0f, -1.0f,  0.0f, 0.0f,
-                1.0f, -1.0f,  1.0f, 0.0f,
+                -1.0f, 1.0f, 0.0f, 1.0f,
+                -1.0f, -1.0f, 0.0f, 0.0f,
+                1.0f, -1.0f, 1.0f, 0.0f,
 
-                -1.0f,  1.0f,  0.0f, 1.0f,
-                1.0f, -1.0f,  1.0f, 0.0f,
-                1.0f,  1.0f,  1.0f, 1.0f
+                -1.0f, 1.0f, 0.0f, 1.0f,
+                1.0f, -1.0f, 1.0f, 0.0f,
+                1.0f, 1.0f, 1.0f, 1.0f
         };
 
         state->quad_vao.init();
         state->quad_vao.bind();
-        state->quad_vao.add_buffer(quad_verticies, sizeof(quad_verticies), 2, 4*sizeof(f32), 0, 0);
-        state->quad_vao.add_buffer(quad_verticies, sizeof(quad_verticies), 2, 4*sizeof(f32), 2*sizeof(f32), 1);
+        state->quad_vao.add_buffer(quad_verticies, sizeof(quad_verticies), 2, 4 * sizeof(f32), 0, 0);
+        state->quad_vao.add_buffer(quad_verticies, sizeof(quad_verticies), 2, 4 * sizeof(f32), 2 * sizeof(f32), 1);
         state->quad_vao.load_buffers();
 
         state->camera.update_cursor(0, 0);
 
-
+        state->font = load_font(state->permanent);
         state->is_initialized = true;
     }
 
@@ -154,6 +215,7 @@ void update_and_render(EngineMemory *memory, EngineInput *app_input) {
     asset_manager->update_if_changed();
 
     const auto projection = perspective(45.0f, ratio, 0.1f, 100.0f);
+    const auto ortho_projection = ortho(0, app_input->client_width, 0, app_input->client_height, 0.0f, 100.0f);
     const auto inv_projection = inverse(projection);
     const auto view = state->camera.get_view();
     const auto pv = projection * view;
@@ -176,8 +238,7 @@ void update_and_render(EngineMemory *memory, EngineInput *app_input) {
             if (mouse->left.is_pressed_this_frame()) {
                 if (hovered_mesh == nullptr) {
                     state->pointer_mode = PointerMode::LOOK_AROUND;
-                }
-                else {
+                } else {
                     state->pointer_mode = PointerMode::GRAB;
                 }
             }
@@ -193,8 +254,7 @@ void update_and_render(EngineMemory *memory, EngineInput *app_input) {
 
     if (state->pointer_mode == PointerMode::NORMAL || state->pointer_mode == PointerMode::GRAB) {
         state->pointer.update_pos(*mouse, app_input->client_width, app_input->client_height);
-    }
-    else {
+    } else {
         state->camera.update_cursor(static_cast<f32>(mouse->dx), static_cast<f32>(mouse->dy));
     }
 
@@ -223,7 +283,7 @@ void update_and_render(EngineMemory *memory, EngineInput *app_input) {
     };
 
     // region Render setup
-    state->ms_framebuffer.bind();
+    gl->bind_framebuffer(GL_FRAMEBUFFER, state->ms_framebuffer.fbo);
     gl->enable(GL_DEPTH_TEST);
     gl->clear_color(1.0f, 1.0f, 1.0f, 0.0f);
     gl->clear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -276,20 +336,21 @@ void update_and_render(EngineMemory *memory, EngineInput *app_input) {
     }
 
 
-    // region Draw cursor
+    // region Draw pointer
     if (state->pointer_mode != PointerMode::LOOK_AROUND) {
+        cursor_program.useProgram();
+        cursor_program.set_uniform("projection", ortho_projection);
         // TODO Fix this, worst implementation ever
         i32 h = app_input->client_height;
         i32 w = app_input->client_width;
-        i32 x = state->pointer.x;
-        i32 y = state->pointer.y;
-        f32 cursor_vertices[] = {
-                to_ndc(x, w), -to_ndc(y, h),
-                to_ndc(-new_x(10, 20, 0.78) + x, w), -to_ndc(y + new_y(10, 20, 0.78), h),
-                to_ndc(-new_x(-10, 20, 0.78) + x, w), -to_ndc(y + new_y(-10, 20, 0.78), h)
+        f32 x = state->pointer.x;
+        f32 y = state->pointer.y;
+        f32 cursor_vertices[6] = {
+                x, y,
+                x - 10, y - 20,
+                x + 10, y - 20
         };
-
-        cursor_program.useProgram();
+        //cli_draw(w, h);
         GLVao cursor_vao{};
         cursor_vao.init();
         cursor_vao.bind();
@@ -298,6 +359,71 @@ void update_and_render(EngineMemory *memory, EngineInput *app_input) {
 
         gl->draw_arrays(GL_TRIANGLES, 0, 3);
         cursor_vao.destroy();
+    }
+    // endregion
+
+    // region Draw text
+    {
+        unsigned int VAO, VBO;
+        gl->create_vertex_arrays(1, &VAO);
+        gl->create_buffers(1, &VBO);
+        gl->bind_vertex_array(VAO);
+        gl->bind_buffer(GL_ARRAY_BUFFER, VBO);
+        gl->buffer_data(GL_ARRAY_BUFFER, sizeof(float) * 6 * 4, NULL, GL_DYNAMIC_DRAW);
+        gl->enable_vertex_attrib_array(0);
+        gl->vertex_attrib_pointer(0, 4, GL_FLOAT, GL_FALSE, 4 * sizeof(float), 0);
+        gl->bind_buffer(GL_ARRAY_BUFFER, 0);
+        gl->bind_vertex_array(0);
+
+        // activate corresponding render state
+        font_program.useProgram();
+        font_program.set_uniform("projection", ortho_projection);
+        gl->active_texture(GL_TEXTURE0);
+        gl->bind_vertex_array(VAO);
+
+        // iterate through all characters
+        const i32 temp[5] = {66, 67, 68, 69, 70};
+        f32 x = 20.0f;
+        f32 y = 20.0f;
+        f32 scale = 1.0f;
+
+        gl->enable(GL_BLEND);
+        gl->blend_func(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+        for (auto c: temp) {
+            Character ch = state->font[c];
+
+            float xpos = x + ch.bearing.x * scale;
+            float ypos = y - (ch.size.y - ch.bearing.y) * scale;
+
+            float w = ch.size.x * scale;
+            float h = ch.size.y * scale;
+            // update VBO for each character
+            float vertices[6][4] = {
+                    {xpos,     ypos + h, 0.0f, 0.0f},
+                    {xpos,     ypos,     0.0f, 1.0f},
+                    {xpos + w, ypos,     1.0f, 1.0f},
+
+                    {xpos,     ypos + h, 0.0f, 0.0f},
+                    {xpos + w, ypos,     1.0f, 1.0f},
+                    {xpos + w, ypos + h, 1.0f, 0.0f}
+            };
+            // render glyph texture over quad
+            gl->bind_texture(GL_TEXTURE_2D, ch.texture_id);
+            // update content of VBO memory
+            gl->bind_buffer(GL_ARRAY_BUFFER, VBO);
+            gl->buffer_sub_data(GL_ARRAY_BUFFER, 0, sizeof(vertices), vertices);
+            gl->bind_buffer(GL_ARRAY_BUFFER, 0);
+            // render quad
+            gl->draw_arrays(GL_TRIANGLES, 0, 6);
+            // now advance cursors for next glyph (note that advance is number of 1/64 pixels)
+            x += (ch.advance >> 6) * scale; // bitshift by 6 to get value in pixels (2^6 = 64)
+        }
+        gl->bind_vertex_array(0);
+        gl->bind_texture(GL_TEXTURE_2D, 0);
+        gl->disable(GL_BLEND);
+        gl->delete_vertex_array(1, &VAO);
+        gl->delete_buffers(1, &VBO);
+
     }
     // endregion
 

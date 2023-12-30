@@ -4,6 +4,7 @@
 #include <platform/types.h>
 #include "math/vec3.h"
 #include "math/vec2.h"
+#include "memory_arena.h"
 
 template<typename T>
 struct Array {
@@ -13,6 +14,11 @@ struct Array {
 
     auto init(T *values, size_t size) -> void {
         _data = values;
+        _size = size;
+    }
+
+    auto init(MemoryArena &arena, size_t size) -> void {
+        _data = push_array<T>(arena, size);
         _size = size;
     }
 

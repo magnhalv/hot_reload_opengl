@@ -5,6 +5,8 @@
 
 #include "logger.h"
 
+#define PUSH_ARRAY(arena, size, type) static_cast<type*>(arena.allocate(size*sizeof(type)))
+
 struct MemoryArena {
     u8* memory = nullptr;
     u64 used = 0;
@@ -15,6 +17,11 @@ struct MemoryArena {
     auto clear() -> void;
     auto check_integrity() const -> void;
 };
+
+template<typename T>
+inline T* push_array(MemoryArena arena, size_t size) {
+    return static_cast<T*>(arena.allocate(size*sizeof(T)));
+}
 
 extern MemoryArena *transient; // This one is erased every frame.
 

@@ -3,9 +3,9 @@
 #include <string>
 
 #include <glad/gl.h>
-#include <glm/glm.hpp>
-
 #include <platform/types.h>
+#include <math/mat4.h>
+#include <math/vec4.h>
 
 #include "assets.h"
 
@@ -35,7 +35,8 @@ public:
 
     [[nodiscard]] GLuint getHandle() const { return _handle; }
 
-    auto set_uniform(const char *name, const glm::vec4 &vec) const -> void;
+    auto set_uniform(const char *name, const vec4 &vec) const -> void;
+    auto set_uniform(const char *name, const mat4 &vec) const -> void;
 
     auto relink_if_changed() -> void;
 

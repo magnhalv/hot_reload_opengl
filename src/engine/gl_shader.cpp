@@ -200,9 +200,14 @@ auto GLShaderProgram::relink_if_changed() -> void {
 }
 
 
-void GLShaderProgram::set_uniform(const char *name, const glm::vec4 &vec) const {
+void GLShaderProgram::set_uniform(const char *name, const vec4 &vec) const {
     i32 id = gl->get_uniform_location(_handle, name);
     gl->uniform_4f(id, vec.x, vec.y, vec.z, vec.w);
+}
+
+void GLShaderProgram::set_uniform(const char *name, const mat4 &mat) const {
+    i32 id = gl->get_uniform_location(_handle, name);
+    gl->gl_uniform_matrix_4_fv(id, 1, GL_FALSE, mat.v);
 }
 
 void GLShaderProgram::free() {

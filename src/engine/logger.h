@@ -3,6 +3,7 @@
 
 #include <cstdio>
 #include <cstdarg>
+#include <cstdlib>
 
 inline void log(const char *type, const char *msg, va_list args) {
     printf("%s", type);
@@ -46,7 +47,7 @@ inline void crash_and_burn(const char *msg, ...) {
     va_end(args_copy);
 
     va_end(args);
-    exit(1);
+    std::exit(1);
 }
 
 #endif //HOT_RELOAD_OPENGL_LOGGER_H
