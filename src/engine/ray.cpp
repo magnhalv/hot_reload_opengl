@@ -11,7 +11,7 @@ vec2 intersections_on_axis(f32 origin, f32 direction, f32 axis_min, f32 axis_max
     f32 tmax;
 
     f32 EPSILON = 0.0001f;
-    if (abs(origin) >= EPSILON)
+    if (abs(origin) >= EPSILON || origin == 0)
     {
         tmin = tmin_numerator / direction;
         tmax = tmax_numerator / direction;
@@ -49,6 +49,7 @@ bool intersects(const vec3 &ray, const vec3 &ray_origin, const BBox &bbox, vec2 
     vec2 y = intersections_on_axis(ray_origin.y, ray.y, bbox.min_y, bbox.max_y);
     vec2 z = intersections_on_axis(ray_origin.z, ray.z, bbox.min_z, bbox.max_z);
 
+
     f32 tmin = max(max(x.v[0], y.v[0]), z.v[0]);
     f32 tmax = min(min(x.v[1], y.v[1]), z.v[1]);
 
@@ -56,7 +57,7 @@ bool intersects(const vec3 &ray, const vec3 &ray_origin, const BBox &bbox, vec2 
         return false;
     }
 
-    if (tmin > tmax || tmin < 0)
+    if (tmin > tmax)
     {
         return false;
     }

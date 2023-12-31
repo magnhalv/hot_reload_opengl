@@ -142,6 +142,9 @@ void update_and_render(EngineMemory *memory, EngineInput *app_input) {
 
         import_mesh("assets/meshes/asset_Cube.fbx", &state->meshes[0]);
         state->meshes[0].id = 1;
+        state->meshes[0].transform.position.x = 0;
+        state->meshes[0].transform.position.y = 0;
+        state->meshes[0].transform.position.z = 0;
         import_mesh("assets/meshes/asset_Sphere.fbx", &state->meshes[1]);
         state->meshes[1].transform.position.x = -10;
         state->meshes[1].id = 2;
@@ -228,7 +231,6 @@ void update_and_render(EngineMemory *memory, EngineInput *app_input) {
         // TODO: Check which on is in front
         vec2 intersections;
         if (intersects(state->camera.get_position(), pointer->ray, mesh, intersections)) {
-            printf("It itersects\n");
             hovered_mesh = &mesh;
         }
     }
