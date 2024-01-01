@@ -8,7 +8,6 @@
 #include "array.h"
 #include "ray.h"
 #include "renderer.h"
-#include "cli.h"
 
 auto Pointer::update_pos(const MouseRaw &raw, i32 client_width, i32 client_height) -> void {
     // TODO: Sensitivity must be moved somewhere else
@@ -54,8 +53,8 @@ void update_and_render(EngineMemory *memory, EngineInput *app_input) {
     const f32 ratio = static_cast<f32>(app_input->client_width) / static_cast<f32>(app_input->client_height);
 
     auto &mesh_program = asset_manager->shader_programs[0];
-    auto &single_color = asset_manager->shader_programs[1];
-    auto &cursor_program = asset_manager->shader_programs[2];
+    auto &single_color_mesh_program = asset_manager->shader_programs[1];
+    auto &single_color_program = asset_manager->shader_programs[2];
     auto &quad_program = asset_manager->shader_programs[3];
     auto &font_program = asset_manager->shader_programs[4];
     asset_manager->num_shader_programs = 5;
@@ -95,8 +94,10 @@ void update_and_render(EngineMemory *memory, EngineInput *app_input) {
         state->ms_framebuffer.init(app_input->client_width, app_input->client_height);
         // region Compile shaders
         mesh_program.initialize(R"(.\assets\shaders\mesh.vert)", R"(.\assets\shaders\phong.frag)");
-        single_color.initialize(R"(.\assets\shaders\mesh.vert)", R"(.\assets\shaders\single_color.frag)");
-        cursor_program.initialize(R"(.\assets\shaders\basic_2d.vert)", R"(.\assets\shaders\single_color.frag)");
+        single_color_mesh_program.initialize(R"(.\assets\shaders\mesh.vert)", R"(.\assets\shaders\single_color.frag)");
+        single_color_mesh_program.useProgram();
+        single_color_mesh_program.set_uniform("color", vec4(0.7f, 0.1f, 0.2f, 0.0f));
+        single_color_program.initialize(R"(.\assets\shaders\basic_2d.vert)", R"(.\assets\shaders\single_color.frag)");
         quad_program.initialize(R"(.\assets\shaders\quad.vert)", R"(.\assets\shaders\quad.frag)");
 
         state->uniform_buffer_container.add(&state->mvp, sizeof(mat4), 0, 0);
@@ -149,6 +150,9 @@ void update_and_render(EngineMemory *memory, EngineInput *app_input) {
 
         state->text_renderer.init(&font_program);
         state->text_renderer.load_font("assets/fonts/ubuntu/Ubuntu-Regular.ttf", state->permanent);
+
+        state->cli.init(&single_color_program);
+
         state->is_initialized = true;
     }
 
@@ -264,7 +268,7 @@ void update_and_render(EngineMemory *memory, EngineInput *app_input) {
 
         enable_outline();
 
-        single_color.useProgram();
+        single_color_mesh_program.useProgram();
 
         hovered_mesh->vao.bind();
         auto t = hovered_mesh->transform;
@@ -280,14 +284,18 @@ void update_and_render(EngineMemory *memory, EngineInput *app_input) {
     }
 
     // region Draw text
+    state->cli.update(static_cast<f32>(app_input->client_width), static_cast<f32>(app_input->client_height), app_input->dt);
+    state->cli.render(static_cast<f32>(app_input->client_width), static_cast<f32>(app_input->client_height));
     state->text_renderer.render(ortho_projection);
+
     // endregion
 
 
     // region Draw pointer
     if (state->pointer_mode != PointerMode::LOOK_AROUND) {
-        cursor_program.useProgram();
-        cursor_program.set_uniform("projection", ortho_projection);
+        single_color_program.useProgram();
+        single_color_program.set_uniform("color", vec4(0.7f, 0.7f, 0.7f, 0.7f));
+        single_color_program.set_uniform("projection", ortho_projection);
         // TODO Fix this, worst implementation ever
         f32 x = state->pointer.x;
         f32 y = state->pointer.y;

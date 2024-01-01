@@ -16,6 +16,7 @@ add_library(Engine SHARED
         engine/ray.cpp
         engine/renderer.cpp
         engine/text_renderer.cpp
+        engine/cli.cpp
         )
 
 include_directories(../shared_deps/glad/include)

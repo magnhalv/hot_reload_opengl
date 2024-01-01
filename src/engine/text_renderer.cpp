@@ -93,20 +93,20 @@ auto TextRenderer::render(const mat4 &ortho_projection) -> void {
     for (auto c: temp) {
         Character ch = _characters[c];
 
-        float xpos = x + ch.bearing.x * scale;
-        float ypos = y - (ch.size.y - ch.bearing.y) * scale;
+        f32 x_pos = x + ch.bearing.x * scale;
+        f32 y_pos = y - (ch.size.y - ch.bearing.y) * scale;
 
-        float w = ch.size.x * scale;
-        float h = ch.size.y * scale;
+        f32 w = ch.size.x * scale;
+        f32 h = ch.size.y * scale;
         // update VBO for each character
-        float vertices[6][4] = {
-                {xpos,     ypos + h, 0.0f, 0.0f},
-                {xpos,     ypos,     0.0f, 1.0f},
-                {xpos + w, ypos,     1.0f, 1.0f},
+        f32 vertices[6][4] = {
+                {x_pos,     y_pos + h, 0.0f, 0.0f},
+                {x_pos,     y_pos,     0.0f, 1.0f},
+                {x_pos + w, y_pos,     1.0f, 1.0f},
 
-                {xpos,     ypos + h, 0.0f, 0.0f},
-                {xpos + w, ypos,     1.0f, 1.0f},
-                {xpos + w, ypos + h, 1.0f, 0.0f}
+                {x_pos,     y_pos + h, 0.0f, 0.0f},
+                {x_pos + w, y_pos,     1.0f, 1.0f},
+                {x_pos + w, y_pos + h, 1.0f, 0.0f}
         };
         // render glyph texture over quad
         gl->bind_texture(GL_TEXTURE_2D, ch.texture_id);

@@ -34,6 +34,7 @@ struct GLVao {
     auto bind() const -> void;
 
     auto add_buffer(GLsizeiptr size, GLbitfield flags = 0) -> void;
+    // TODO: Move to buffer, and make offset last argument with default = 0;
     auto upload_buffer_data(i32 buffer_idx, void* data, GLsizeiptr offset, GLsizeiptr size) -> void;
     auto add_buffer_desc(u32 buffer_idx, u32 location, i32 size, i32 offset, i32 stride) -> void;
     auto add_buffer_desc(u32 buffer_idx, GLBufferElementDescription desc) -> void;

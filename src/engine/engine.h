@@ -18,6 +18,7 @@
 
 #include "allocators/pool_allocator.h"
 #include "array.h"
+#include "cli.h"
 
 enum class PointerMode {
     NORMAL = 0,
@@ -56,6 +57,7 @@ struct EngineState {
     // Gameplay
     PointerMode pointer_mode;
     TextRenderer text_renderer;
+    Cli cli;
 };
 
 extern "C" __declspec(dllexport) void update_and_render(EngineMemory *memory, EngineInput *app_input);
