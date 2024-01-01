@@ -7,12 +7,15 @@ add_library(Engine SHARED
         engine/asset_import.cpp
         engine/asset_manager.cpp
         engine/engine.cpp
-        engine/gl_shader.cpp
+        engine/gl/gl.cpp
+        engine/gl/gl_shader.cpp
+        engine/gl/gl_vao.cpp
         engine/memory.cpp
         engine/memory_arena.cpp
+        engine/platform.cpp
         engine/ray.cpp
         engine/renderer.cpp
-        engine/gl.cpp
+        engine/text_renderer.cpp
         )
 
 include_directories(../shared_deps/glad/include)

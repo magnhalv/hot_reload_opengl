@@ -6,7 +6,7 @@
 #include <math/math.h>
 #include <math/transform.h>
 
-#include "gl_shader.h"
+#include "gl/gl_vao.h"
 
 const i32 MESH_MAX_VERTICES = 10000;
 

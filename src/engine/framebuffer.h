@@ -2,7 +2,7 @@
 #define HOT_RELOAD_OPENGL_FRAMEBUFFER_H
 
 #include <platform/types.h>
-#include "gl.h"
+#include "gl/gl.h"
 #include "logger.h"
 
 struct Framebuffer {

@@ -6,7 +6,7 @@
 #include <cassert>
 #include "logger.h"
 #include "memory.h"
-#include "gl_shader.h"
+#include "gl/gl_shader.h"
 
 const i32 Max_Num_Shader_Programs = 5;
 

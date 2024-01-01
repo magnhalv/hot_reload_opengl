@@ -7,7 +7,7 @@
 #include <math/mat4.h>
 #include <math/vec4.h>
 
-#include "assets.h"
+#include "../assets.h"
 
 const i32 Shader_Path_Max_Length = 512;
 const u32 Max_Buffers = 3;
@@ -36,58 +36,27 @@ public:
     [[nodiscard]] GLuint getHandle() const { return _handle; }
 
     auto set_uniform(const char *name, const vec4 &vec) const -> void;
+    auto set_uniform(const char *name, const vec3 &vec) const -> void;
     auto set_uniform(const char *name, const mat4 &vec) const -> void;
 
     auto relink_if_changed() -> void;
-
-    auto add_uniform_buffer(void *data, GLsizeiptr size, u32 index, GLbitfield flags) -> bool;
-
-    auto update_dynamic_buffers() const -> void;
 
 private:
     auto create_program(const char *vertex_path, const char *fragment_path) -> u32;
 
     FileAsset _vertex_source{};
     FileAsset _fragment_source{};
-    GLUniformBuffer _uniform_buffers[Max_Buffers]{};
-    u32 _num_uniform_buffers{};
 
     GLuint _handle{};
 };
 
-struct GLBuffer {
-    u32 handle;
-    void *data;
-    GLsizeiptr size;
-    i32 num_entries;
-    i32 stride;
-    u32 index;
-    GLbitfield flags;
-    i32 offset;
-};
-
-struct GLVao {
-    u32 handle;
-    GLBuffer buffers[Max_Buffers];
-    u32 num_buffers;
-
-    auto init() -> void;
-
-    auto destroy() -> void;
-
-    auto bind() const -> void;
-
-    auto add_buffer(
-            void *data,
-            GLsizeiptr size,
-            i32 num_entries,
-            i32 stride,
-            i32 offset,
-            u32 index,
-            GLbitfield flags = 0
-    ) -> void;
-
-    auto load_buffers() -> void;
+struct GLGlobalUniformBufferContainer {
+public:
+    auto add(void *data, GLsizeiptr size, u32 index, GLbitfield flags) -> bool;
+    auto upload() const -> void;
+private:
+    GLUniformBuffer _uniform_buffers[Max_Buffers]{};
+    u32 _num_uniform_buffers{};
 };
 
 GLenum GLShaderType_from_file_name(const char *file_name);

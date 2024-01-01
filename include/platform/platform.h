@@ -41,6 +41,7 @@ struct GLFunctions {
     PFNGLPOLYGONMODEPROC polygon_mode;
     PFNGLSHADERSOURCEPROC shader_source;
     PFNGLUNIFORM4FPROC uniform_4f;
+    PFNGLUNIFORM3FPROC uniform_3f;
     PFNGLUSEPROGRAMPROC use_program;
     PFNGLVERTEXARRAYATTRIBBINDINGPROC vertex_array_attrib_binding;
     PFNGLVERTEXARRAYATTRIBFORMATPROC vertex_array_attrib_format;
