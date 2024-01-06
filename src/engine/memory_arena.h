@@ -14,13 +14,14 @@ struct MemoryArena {
 
     auto init(void *in_memory, u32 in_size) -> void;
     auto allocate(u64 request_size) -> void*;
+    auto allocate_arena(u64 request_size) -> MemoryArena*;
     auto clear() -> void;
     auto check_integrity() const -> void;
 };
 
 template<typename T>
-inline T* push_array(MemoryArena arena, size_t size) {
-    return static_cast<T*>(arena.allocate(size*sizeof(T)));
+inline T* push_array(MemoryArena *arena, size_t size) {
+    return static_cast<T*>(arena->allocate(size*sizeof(T)));
 }
 
 extern MemoryArena *transient; // This one is erased every frame.

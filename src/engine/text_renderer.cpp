@@ -21,7 +21,7 @@ auto TextRenderer::load_font(const char *path, MemoryArena &permanent_arena) -> 
 
     _characters.init(permanent_arena, 128);
     i32 i = 0;
-    for (unsigned char c = 0; c < 128; c++) {
+    for (u8 c = 0; c < 128; c++) {
         if (FT_Load_Char(face, c, FT_LOAD_RENDER)) {
             crash_and_burn("FreeType: Failed to load glyph.");
         }
@@ -72,7 +72,7 @@ auto TextRenderer::init(GLShaderProgram *program) -> void {
     _vao.upload_buffer_desc();
 }
 
-auto TextRenderer::render(const mat4 &ortho_projection) -> void {
+auto TextRenderer::render(const char *text, i32 length, f32 x, f32 y, f32 scale, const mat4 &ortho_projection) -> void {
     assert(_program != nullptr);
 
     // activate corresponding render state
@@ -83,14 +83,13 @@ auto TextRenderer::render(const mat4 &ortho_projection) -> void {
     gl->active_texture(GL_TEXTURE0);
 
     // iterate through all characters
-    const i32 temp[] = {115, 116};
-    f32 x = 20.0f;
-    f32 y = 20.0f;
-    f32 scale = 1.0f;
 
     gl->enable(GL_BLEND);
+    gl->disable(GL_DEPTH_TEST);
     gl->blend_func(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-    for (auto c: temp) {
+    for (auto i = 0; i < length; i++) {
+        i32 c = text[i];
+        assert(c > 0 && c < _characters.size());
         Character ch = _characters[c];
 
         f32 x_pos = x + ch.bearing.x * scale;
@@ -98,7 +97,7 @@ auto TextRenderer::render(const mat4 &ortho_projection) -> void {
 
         f32 w = ch.size.x * scale;
         f32 h = ch.size.y * scale;
-        // update VBO for each character
+
         f32 vertices[6][4] = {
                 {x_pos,     y_pos + h, 0.0f, 0.0f},
                 {x_pos,     y_pos,     0.0f, 1.0f},
@@ -121,4 +120,5 @@ auto TextRenderer::render(const mat4 &ortho_projection) -> void {
     gl->bind_vertex_array(0);
     gl->bind_texture(GL_TEXTURE_2D, 0);
     gl->disable(GL_BLEND);
+    gl->disable(GL_DEPTH_TEST);
 }

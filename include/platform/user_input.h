@@ -34,7 +34,7 @@ struct MouseRaw {
     };
 };
 
-const i32 NUM_BUTTONS = 7;
+const i32 NUM_BUTTONS = 34;
 
 struct UserInput {
     MouseRaw mouse_raw; // mutated by platform
@@ -42,14 +42,43 @@ struct UserInput {
     {
         ButtonState buttons[NUM_BUTTONS + 1];
         struct {
+            ButtonState a;
+            ButtonState b;
+            ButtonState c;
+            ButtonState d;
+            ButtonState e;
+            ButtonState f;
+            ButtonState g;
+            ButtonState h;
+            ButtonState i;
+            ButtonState j;
+            ButtonState k;
+            ButtonState l;
+            ButtonState m;
+            ButtonState n;
+            ButtonState o;
+            ButtonState p;
+            ButtonState q;
+            ButtonState r;
+            ButtonState s;
+            ButtonState t;
+            ButtonState u;
+            ButtonState v;
+            ButtonState w;
+            ButtonState x;
+            ButtonState y;
+            ButtonState z;
+
+            ButtonState back;
+            ButtonState enter;
+
             ButtonState move_up;
             ButtonState move_down;
             ButtonState move_left;
             ButtonState move_right;
 
             ButtonState space;
-            ButtonState r;
-            ButtonState p;
+            ButtonState oem_5;
 
             //Note: All buttons must be added above this line
             ButtonState terminator;

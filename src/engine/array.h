@@ -18,7 +18,7 @@ struct Array {
     }
 
     auto init(MemoryArena &arena, size_t size) -> void {
-        _data = push_array<T>(arena, size);
+        _data = push_array<T>(&arena, size);
         _size = size;
     }
 
@@ -30,6 +30,10 @@ struct Array {
     const T &operator[](size_t index) const {
         assert(index < _size);
         return _data[index];
+    }
+
+    [[nodiscard]] auto inline data() const -> T* {
+        return _data;
     }
 
     [[nodiscard]] auto inline size() const -> size_t {

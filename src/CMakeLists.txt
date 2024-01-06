@@ -48,6 +48,12 @@ add_subdirectory(math)
 target_link_libraries(Engine assimp math freetype)
 set_target_properties(Engine PROPERTIES DEBUG_POSTFIX "")
 
+if(CMAKE_BUILD_TYPE MATCHES Debug)
+    target_compile_definitions(Engine PUBLIC ENGINE_DEBUG=1)
+elseif(CMAKE_BUILD_TYPE MATCHES Release)
+    target_compile_definitions(Engine PUBLIC ENGINE_DEBUG=0)
+endif()
+
 set_target_properties(Engine PROPERTIES
         RUNTIME_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/bin/app
         LIBRARY_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/bin/app

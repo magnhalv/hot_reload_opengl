@@ -34,6 +34,13 @@ auto MemoryArena::allocate(u64 request_size) -> void * {
     return result;
 }
 
+auto MemoryArena::allocate_arena(u64 request_size) -> MemoryArena* {
+    void *mem_block = static_cast<u8*>(allocate(request_size + sizeof(MemoryArena)));
+    auto *new_arena = static_cast<MemoryArena*>(mem_block);
+    new_arena->init(static_cast<u8*>(mem_block) + sizeof(MemoryArena), request_size);
+    return new_arena;
+}
+
 auto MemoryArena::clear() -> void {
     debug_set_memory(memory, size);
     used = sizeof(ArenaGuard);

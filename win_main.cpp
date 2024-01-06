@@ -423,24 +423,93 @@ void win32_process_pending_messages(HWND hwnd, bool &is_running, UserInput &new_
                 bool was_down = ((message.lParam & (1 << 30)) != 0);
                 bool is_down = ((message.lParam & (1 << 31)) == 0);
                 if (was_down != is_down) {
-                    if (vk_code == 'W') {
-                        win32_process_keyboard_message(new_input.move_up, is_down);
-                    }
                     if (vk_code == 'A') {
-                        win32_process_keyboard_message(new_input.move_left, is_down);
+                        win32_process_keyboard_message(new_input.a, is_down);
                     }
-                    if (vk_code == 'S') {
-                        win32_process_keyboard_message(new_input.move_down, is_down);
+                    if (vk_code == 'B') {
+                        win32_process_keyboard_message(new_input.b, is_down);
+                    }
+                    if (vk_code == 'C') {
+                        win32_process_keyboard_message(new_input.c, is_down);
                     }
                     if (vk_code == 'D') {
-                        win32_process_keyboard_message(new_input.move_right, is_down);
+                        win32_process_keyboard_message(new_input.d, is_down);
                     }
-                    if (vk_code == 'R') {
-                        win32_process_keyboard_message(new_input.r, is_down);
+                    if (vk_code == 'E') {
+                        win32_process_keyboard_message(new_input.e, is_down);
+                    }
+                    if (vk_code == 'F') {
+                        win32_process_keyboard_message(new_input.f, is_down);
+                    }
+                    if (vk_code == 'G') {
+                        win32_process_keyboard_message(new_input.g, is_down);
+                    }
+                    if (vk_code == 'H') {
+                        win32_process_keyboard_message(new_input.h, is_down);
+                    }
+                    if (vk_code == 'I') {
+                        win32_process_keyboard_message(new_input.i, is_down);
+                    }
+                    if (vk_code == 'J') {
+                        win32_process_keyboard_message(new_input.j, is_down);
+                    }
+                    if (vk_code == 'K') {
+                        win32_process_keyboard_message(new_input.k, is_down);
+                    }
+                    if (vk_code == 'L') {
+                        win32_process_keyboard_message(new_input.l, is_down);
+                    }
+                    if (vk_code == 'M') {
+                        win32_process_keyboard_message(new_input.m, is_down);
+                    }
+                    if (vk_code == 'N') {
+                        win32_process_keyboard_message(new_input.n, is_down);
+                    }
+                    if (vk_code == 'O') {
+                        win32_process_keyboard_message(new_input.o, is_down);
                     }
                     if (vk_code == 'P') {
                         win32_process_keyboard_message(new_input.p, is_down);
                     }
+                    if (vk_code == 'Q') {
+                        win32_process_keyboard_message(new_input.q, is_down);
+                    }
+                    if (vk_code == 'R') {
+                        win32_process_keyboard_message(new_input.r, is_down);
+                    }
+                    if (vk_code == 'S') {
+                        win32_process_keyboard_message(new_input.s, is_down);
+                    }
+                    if (vk_code == 'T') {
+                        win32_process_keyboard_message(new_input.t, is_down);
+                    }
+                    if (vk_code == 'U') {
+                        win32_process_keyboard_message(new_input.u, is_down);
+                    }
+                    if (vk_code == 'V') {
+                        win32_process_keyboard_message(new_input.v, is_down);
+                    }
+                    if (vk_code == 'W') {
+                        win32_process_keyboard_message(new_input.w, is_down);
+                    }
+                    if (vk_code == 'X') {
+                        win32_process_keyboard_message(new_input.x, is_down);
+                    }
+                    if (vk_code == 'Y') {
+                        win32_process_keyboard_message(new_input.y, is_down);
+                    }
+                    if (vk_code == 'Z') {
+                        win32_process_keyboard_message(new_input.z, is_down);
+                    }
+
+                    if (vk_code == VK_BACK) {
+                        win32_process_keyboard_message(new_input.back, is_down);
+                    }
+                    if (vk_code == VK_RETURN) {
+                        win32_process_keyboard_message(new_input.enter, is_down);
+                    }
+
+
                     if (vk_code == VK_UP) {
                     }
                     if (vk_code == VK_DOWN) {
@@ -454,6 +523,11 @@ void win32_process_pending_messages(HWND hwnd, bool &is_running, UserInput &new_
                     }
                     if (vk_code == VK_SPACE) {
                         win32_process_keyboard_message(new_input.space, is_down);
+                    }
+
+
+                    if (vk_code == VK_OEM_5) {
+                        win32_process_keyboard_message(new_input.oem_5, is_down);
                     }
                 }
             }
@@ -765,56 +839,59 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR szCmdLine,
 
         win32_process_pending_messages(hwnd, is_running, *current_input, *previous_input);
 
-        if (current_input->r.is_pressed_this_frame()) {
-            if (!is_recording) {
-                auto is_success = win32_start_recording(&memory, recording);
-                if (is_success) {
-                    is_recording = true;
-                    printf("Started recording.\n");
+        {
+            /*if (current_input->r.is_pressed_this_frame()) {
+                if (!is_recording) {
+                    auto is_success = win32_start_recording(&memory, recording);
+                    if (is_success) {
+                        is_recording = true;
+                        printf("Started recording.\n");
+                    } else {
+                        printf("Failed to start recording.\n");
+                    }
                 } else {
-                    printf("Failed to start recording.\n");
+                    is_recording = false;
+                    win32_stop_recording(recording);
+                    printf("Recording successfully stopped.\n");
                 }
-            } else {
-                is_recording = false;
-                win32_stop_recording(recording);
-                printf("Recording successfully stopped.\n");
-            }
-        }
+            }*/
 
-        if (current_input->p.is_pressed_this_frame() && !is_recording) {
-            if (!is_playing_back) {
-                auto is_success = win32_init_playback(playback);
-                if (is_success) {
-                    printf("Started playback.\n");
-                    is_playing_back = true;
+            /*if (current_input->p.is_pressed_this_frame() && !is_recording) {
+                if (!is_playing_back) {
+                    auto is_success = win32_init_playback(playback);
+                    if (is_success) {
+                        printf("Started playback.\n");
+                        is_playing_back = true;
+                        memcpy(memory.permanent, playback.permanent_memory, Permanent_Memory_Block_Size);
+                        memcpy(memory.asset, playback.asset_memory, Assets_Memory_Block_Size);
+                    } else {
+                        printf("Failed to start playback.\n");
+                    }
+                } else {
+                    win32_stop_playback(playback);
+                    is_playing_back = false;
+                }
+            }*/
+
+            /*if (is_playing_back) {
+                if (playback.current_playback_frame == playback.num_frames_recorded) {
                     memcpy(memory.permanent, playback.permanent_memory, Permanent_Memory_Block_Size);
-                    memcpy(memory.asset, playback.asset_memory, Assets_Memory_Block_Size);
-                } else {
-                    printf("Failed to start playback.\n");
+                    playback.current_playback_frame = 0;
                 }
-            } else {
-                win32_stop_playback(playback);
-                is_playing_back = false;
-            }
+                app_input = playback.input[playback.current_playback_frame++];
+            } else {*/
+                app_input.input = *current_input;
+            //}
+
+            /*if (is_recording) {
+                if (!win32_record_frame_input(&app_input, recording)) {
+                    printf("Recording failed. Stopping.\n");
+                    win32_stop_recording(recording);
+                    is_recording = false;
+                }
+            }*/
         }
 
-        if (is_playing_back) {
-            if (playback.current_playback_frame == playback.num_frames_recorded) {
-                memcpy(memory.permanent, playback.permanent_memory, Permanent_Memory_Block_Size);
-                playback.current_playback_frame = 0;
-            }
-            app_input = playback.input[playback.current_playback_frame++];
-        } else {
-            app_input.input = *current_input;
-        }
-
-        if (is_recording) {
-            if (!win32_record_frame_input(&app_input, recording)) {
-                printf("Recording failed. Stopping.\n");
-                win32_stop_recording(recording);
-                is_recording = false;
-            }
-        }
 
 
         app_functions.update_and_render(&memory, &app_input);

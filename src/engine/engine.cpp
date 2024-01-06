@@ -148,23 +148,23 @@ void update_and_render(EngineMemory *memory, EngineInput *app_input) {
 
         state->camera.update_cursor(0, 0);
 
-        state->text_renderer.init(&font_program);
-        state->text_renderer.load_font("assets/fonts/ubuntu/Ubuntu-Regular.ttf", state->permanent);
-
-        state->cli.init(&single_color_program);
+        auto cli_memory_arena = state->permanent.allocate_arena(MegaBytes(1));
+        state->cli.init(&single_color_program, &font_program, cli_memory_arena);
 
         state->is_initialized = true;
     }
 
     // endregion
 
-    state->material = get_material("metal");
-
+#if ENGINE_DEBUG
     state->permanent.check_integrity();
     asset_manager->update_if_changed();
+#endif
+
+    state->material = get_material("metal");
 
     const auto projection = perspective(45.0f, ratio, 0.1f, 100.0f);
-    const auto ortho_projection = ortho(0, app_input->client_width, 0, app_input->client_height, 0.0f, 100.0f);
+    const auto ortho_projection = create_ortho(0, app_input->client_width, 0, app_input->client_height, 0.0f, 100.0f);
     const auto inv_projection = inverse(projection);
     const auto view = state->camera.get_view();
     const auto pv = projection * view;
@@ -201,12 +201,17 @@ void update_and_render(EngineMemory *memory, EngineInput *app_input) {
             break;
     }
 
-    if (state->pointer_mode == PointerMode::NORMAL || state->pointer_mode == PointerMode::GRAB) {
-        state->pointer.update_pos(*mouse, app_input->client_width, app_input->client_height);
-    } else {
-        state->camera.update_cursor(static_cast<f32>(mouse->dx), static_cast<f32>(mouse->dy));
+    if (state->is_cli_enabled) {
+        state->cli.handle_input(&app_input->input);
     }
-    state->pointer.update_ray(view, inv_projection, app_input->client_width, app_input->client_height);
+    else {
+        if (state->pointer_mode == PointerMode::NORMAL || state->pointer_mode == PointerMode::GRAB) {
+            state->pointer.update_pos(*mouse, app_input->client_width, app_input->client_height);
+        } else {
+            state->camera.update_cursor(static_cast<f32>(mouse->dx), static_cast<f32>(mouse->dy));
+        }
+        state->pointer.update_ray(view, inv_projection, app_input->client_width, app_input->client_height);
+    }
 
 
     Mesh floor;
@@ -233,7 +238,7 @@ void update_and_render(EngineMemory *memory, EngineInput *app_input) {
     // region Render setup
     gl->bind_framebuffer(GL_FRAMEBUFFER, state->ms_framebuffer.fbo);
     gl->enable(GL_DEPTH_TEST);
-    gl->clear_color(1.0f, 1.0f, 1.0f, 0.0f);
+    gl->clear_color(0.0f, 0.0f, 0.0f, 1.0f);
     gl->clear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     gl->viewport(0, 0, app_input->client_width, app_input->client_height);
     // endregion
@@ -284,9 +289,15 @@ void update_and_render(EngineMemory *memory, EngineInput *app_input) {
     }
 
     // region Draw text
-    state->cli.update(static_cast<f32>(app_input->client_width), static_cast<f32>(app_input->client_height), app_input->dt);
-    state->cli.render(static_cast<f32>(app_input->client_width), static_cast<f32>(app_input->client_height));
-    state->text_renderer.render(ortho_projection);
+    const f32 c_width = static_cast<f32>(app_input->client_width);
+    const f32 c_height = static_cast<f32>(app_input->client_height);
+    if (app_input->input.oem_5.is_pressed_this_frame()) {
+        state->is_cli_enabled = state->cli.toggle(c_height);
+    }
+
+    state->cli.update(c_width, c_height, app_input->dt);
+    state->cli.render_background(c_width, c_height);
+    state->cli.render_text(c_width, c_height);
 
     // endregion
 
@@ -328,7 +339,7 @@ void update_and_render(EngineMemory *memory, EngineInput *app_input) {
         state->quad_vao.bind();
         quad_program.useProgram();
         gl->bind_framebuffer(GL_FRAMEBUFFER, 0);
-        gl->clear_color(1.0f, 1.0f, 1.0f, 1.0f);
+        gl->clear_color(0.0f, 0.0f, 0.0f, 1.0f);
         gl->clear(GL_COLOR_BUFFER_BIT);
         gl->disable(GL_DEPTH_TEST);
 

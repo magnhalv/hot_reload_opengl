@@ -15,7 +15,7 @@ struct Character {
 struct TextRenderer {
     auto load_font(const char *path, MemoryArena &permanent_arena) -> void;
     auto init(GLShaderProgram *program) -> void;
-    auto render(const mat4 &ortho_projection) -> void;
+    auto render(const char *text, i32 length, f32 x, f32 y, f32 scale, const mat4 &ortho_projection) -> void;
 
 private:
     GLVao _vao;

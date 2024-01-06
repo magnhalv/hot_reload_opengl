@@ -36,6 +36,13 @@ struct Pointer {
     auto update_ray(const mat4 &view, const mat4 &inv_projection, i32 client_width, i32 client_height) -> void;
 };
 
+struct Window {
+    f32 width;
+    f32 height;
+    mat4 ortho;
+    mat4 perspective;
+};
+
 struct EngineState {
     Pointer pointer;
     bool is_initialized = false;
@@ -54,10 +61,12 @@ struct EngineState {
     Material material;
     mat4 mvp;
 
+    bool is_cli_enabled;
+
     // Gameplay
     PointerMode pointer_mode;
-    TextRenderer text_renderer;
     Cli cli;
+
 };
 
 extern "C" __declspec(dllexport) void update_and_render(EngineMemory *memory, EngineInput *app_input);

@@ -82,7 +82,7 @@ mat4 inverse(const mat4& m);
 void invert(mat4& m);
 mat4 frustum(f32 l, f32 r, f32 b, f32 t, f32 n, f32 f);
 mat4 perspective(f32 fov_degrees, f32 aspect, f32 znear, f32 zfar);
-mat4 ortho(f32 l, f32 r, f32 b, f32 t, f32 n, f32 f);
+mat4 create_ortho(f32 l, f32 r, f32 b, f32 t, f32 n, f32 f);
 mat4 lookAt(const vec3& position, const vec3& target, const vec3& up);
 
 void print(const mat4& m);
