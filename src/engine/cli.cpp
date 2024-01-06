@@ -14,28 +14,31 @@ auto cubic_bezier(vec2 p0, vec2 p1, vec2 p2, vec2 p3, f32 t) -> vec2 {
 
 
 auto Cli::handle_input(UserInput *input) -> void {
-    for (u8 i = 0; i < 26; i++) {
-        auto button = input->buttons[i];
+    if (!_command_buffer.is_full()) {
+        for (u8 i = 0; i < 26; i++) {
+            auto button = input->buttons[i];
 
-        if (button.is_pressed_this_frame() && !_command_buffer.is_full()) {
-            _command_buffer.push(i + 97);
+            if (button.is_pressed_this_frame()) {
+                _command_buffer.push(i + 97);
+            }
         }
-    }
 
-    if (input->space.is_pressed_this_frame() && !_command_buffer.is_full()) {
-        _command_buffer.push(' ');
+        if (input->space.is_pressed_this_frame()) {
+            _command_buffer.push(' ');
+        }
+
+        if (input->enter.is_pressed_this_frame()) {
+            _command_buffer.push('\0');
+            execute_command(_command_buffer.data(), _command_buffer.size());
+            if (_command_buffer.size() > num_start_characters) {
+                _command_buffer.pop(_command_buffer.size() - num_start_characters);
+            }
+        }
     }
 
     if (input->back.is_pressed_this_frame()) {
         if (_command_buffer.size() > num_start_characters) {
             _command_buffer.pop();
-        }
-    }
-
-    if (input->enter.is_pressed_this_frame()) {
-        add_text(_command_buffer.data(), _command_buffer.size());
-        if (_command_buffer.size() > num_start_characters) {
-            _command_buffer.pop(_command_buffer.size() - num_start_characters);
         }
     }
 }
@@ -139,6 +142,21 @@ auto Cli::render_text(f32 client_width, f32 client_height) -> void {
         );
         line_nr++;
     }
+}
+
+auto Cli::execute_command(const char *command, size_t length) -> void {
+    add_text(command, length);
+
+    char steffy[] = "> steffy is cute";
+    if (strcmp(command, steffy) == 0) {
+        char goat[] = "  ...a very cute baby goat runs over the screen!!!";
+        add_text(goat, sizeof(goat));
+    }
+    else {
+        char not_found[] = "  Command not found";
+        add_text(not_found, sizeof(not_found));
+    }
+
 }
 
 auto Cli::add_text(const char *text, size_t length) -> void {

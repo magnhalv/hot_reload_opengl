@@ -88,7 +88,10 @@ auto TextRenderer::render(const char *text, i32 length, f32 x, f32 y, f32 scale,
     gl->disable(GL_DEPTH_TEST);
     gl->blend_func(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
     for (auto i = 0; i < length; i++) {
-        i32 c = text[i];
+        char c = text[i];
+        if (c == '\0') {
+            continue;
+        }
         assert(c > 0 && c < _characters.size());
         Character ch = _characters[c];
 

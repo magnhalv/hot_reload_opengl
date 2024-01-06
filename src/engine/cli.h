@@ -44,6 +44,7 @@ struct Cli {
     auto render_background(f32 client_width, f32 client_height) -> void;
     auto render_text(f32 client_width, f32 client_height) -> void;
 
+    auto execute_command(const char *command, size_t length) -> void;
     auto add_text(const char* text, size_t length) -> void;
 
     f32 t;
