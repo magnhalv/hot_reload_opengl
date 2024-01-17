@@ -263,8 +263,8 @@ void win32_stop_playback(Playback &playback) {
     playback.current_playback_frame = 0;
 }
 
-LPCTSTR dll_path = R"(.\bin\app\Engine.dll)";
-LPCTSTR pdb_path = R"(.\bin\app\Engine.pdb)";
+LPCTSTR dll_path = R"(.\bin\app\engine_dyn.dll)";
+LPCTSTR pdb_path = R"(.\bin\app\engine_dyn.pdb)";
 LPCTSTR versioned_dll_path = R"(.\bin\versions\)";
 
 bool win32_should_reload_dll(EngineFunctions *app_functions) {
@@ -309,7 +309,7 @@ void win32_load_dll(EngineFunctions *functions) {
     }
 
     char dll_to_load_path[128];
-    sprintf(dll_to_load_path, "%s\\%s", dir_path, "Engine.dll");
+    sprintf(dll_to_load_path, "%s\\%s", dir_path, "engine_dyn.dll");
     while (!CopyFile(dll_path, dll_to_load_path, FALSE)) {
         DWORD error = GetLastError();
         printf("Failed to copy %s to %s. Error code: %lu\n", dll_path, dll_to_load_path, error);
@@ -318,7 +318,7 @@ void win32_load_dll(EngineFunctions *functions) {
     }
 
     char pdb_to_load_path[128];
-    sprintf(pdb_to_load_path, "%s\\%s", dir_path, "Engine.pdb");
+    sprintf(pdb_to_load_path, "%s\\%s", dir_path, "engine_dyn.pdb");
     if (!CopyFile(pdb_path, pdb_to_load_path, FALSE)) {
         DWORD error = GetLastError();
         printf("Failed to copy %s to %s. Error code: %lu\n", pdb_path, pdb_to_load_path, error);
@@ -335,13 +335,13 @@ void win32_load_dll(EngineFunctions *functions) {
 
     functions->update_and_render = (UPDATE_AND_RENDER_PROC) GetProcAddress(functions->handle, "update_and_render");
     if (functions->update_and_render == nullptr) {
-        printf("Unable to load 'update_and_render' function in Engine.dll\n");
+        printf("Unable to load 'update_and_render' function in engine_dyn.dll\n");
         FreeLibrary(functions->handle);
     }
 
     functions->load = (LOAD_PROC) GetProcAddress(functions->handle, "load");
     if (functions->load == nullptr) {
-        printf("Unable to load 'load' function in Engine.dll\n");
+        printf("Unable to load 'load' function in engine_dyn.dll\n");
         FreeLibrary(functions->handle);
     }
 

@@ -1,8 +1,10 @@
 cmake_minimum_required(VERSION 3.10)   # Adjust according to your installed version
 
-project(Engine)
+project(engine)
 
-add_library(Engine SHARED
+option(ENGINE_BUILD_SHARED_LIBS "Build using shared libraries" ON)
+
+set(SOURCE_FILES
         engine/array.cpp
         engine/asset_import.cpp
         engine/asset_manager.cpp
@@ -17,7 +19,11 @@ add_library(Engine SHARED
         engine/renderer.cpp
         engine/text_renderer.cpp
         engine/cli.cpp
+        engine/logger.cpp
         )
+
+add_library(engine_dyn SHARED ${SOURCE_FILES})
+add_library(engine_static ${SOURCE_FILES} )
 
 include_directories(../shared_deps/glad/include)
 include_directories(deps/src/glm)
@@ -45,17 +51,37 @@ add_subdirectory(math)
 
 # END ASSIMP
 
-target_link_libraries(Engine assimp math freetype)
-set_target_properties(Engine PROPERTIES DEBUG_POSTFIX "")
+set(LIBS assimp math freetype)
 
-if(CMAKE_BUILD_TYPE MATCHES Debug)
-    target_compile_definitions(Engine PUBLIC ENGINE_DEBUG=1)
-elseif(CMAKE_BUILD_TYPE MATCHES Release)
-    target_compile_definitions(Engine PUBLIC ENGINE_DEBUG=0)
-endif()
+# Dynamic configuration
 
-set_target_properties(Engine PROPERTIES
+target_link_libraries(engine_dyn ${LIBS})
+set_target_properties(engine_dyn PROPERTIES DEBUG_POSTFIX "")
+
+if (CMAKE_BUILD_TYPE MATCHES Debug)
+    target_compile_definitions(engine_dyn PUBLIC ENGINE_DEBUG=1)
+elseif (CMAKE_BUILD_TYPE MATCHES Release)
+    target_compile_definitions(engine_dyn PUBLIC ENGINE_DEBUG=0)
+endif ()
+
+set_target_properties(engine_dyn PROPERTIES
         RUNTIME_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/bin/app
         LIBRARY_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/bin/app
         ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/bin/app
-)
+        )
+
+# Static configuration
+target_link_libraries(engine_static ${LIBS})
+#set_target_properties(engine_static PROPERTIES DEBUG_POSTFIX "")
+
+if (CMAKE_BUILD_TYPE MATCHES Debug)
+    target_compile_definitions(engine_static PUBLIC ENGINE_DEBUG=1)
+elseif (CMAKE_BUILD_TYPE MATCHES Release)
+    target_compile_definitions(engine_static PUBLIC ENGINE_DEBUG=0)
+endif ()
+
+set_target_properties(engine_dyn PROPERTIES
+        RUNTIME_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/bin/app
+        LIBRARY_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/bin/app
+        ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/bin/app
+        )

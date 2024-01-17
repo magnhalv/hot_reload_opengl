@@ -14,7 +14,10 @@ struct ArenaGuard {
 };
 
 auto MemoryArena::allocate(u64 request_size) -> void * {
-    assert(size >= request_size + sizeof(ArenaGuard));
+    if (size <= used + request_size + sizeof(ArenaGuard)) {
+        crash_and_burn("Failed to allocate %" PRIu64 " bytes. Only %" PRIu64 " remaining.", request_size, used - sizeof(ArenaGuard));
+    }
+
     auto *previous_guard = reinterpret_cast<ArenaGuard *>(&memory[used - sizeof(ArenaGuard)]);
     assert(previous_guard->guard_pattern == GUARD_PATTERN);
 

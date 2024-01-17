@@ -4,6 +4,7 @@
 const size_t RawBufferSize = KiloBytes(512);
 const size_t num_start_characters = 2;
 
+
 auto cubic_bezier(vec2 p0, vec2 p1, vec2 p2, vec2 p3, f32 t) -> vec2 {
     const f32 b = 1 - t;
     return {
@@ -97,7 +98,7 @@ auto Cli::update(f32 client_width, f32 client_height, f32 dt) -> void {
     _current_y = client_height - _target_y * bezier;
     _current_height = client_height - _current_y;
 
-    _sizes.update(client_width, client_height);
+    _sizes.update(client_width, _current_height);
 }
 
 auto Cli::render_background(f32 client_width, f32 client_height) -> void {
@@ -127,20 +128,23 @@ auto Cli::render_text(f32 client_width, f32 client_height) -> void {
     f32 line_x = padding;
     f32 line_y = client_height - (client_height - _current_y) + padding;
     _renderer.render(
-            _command_buffer.data(), _command_buffer.size(), line_x, line_y, 0.5,
+            _command_buffer.data(), _command_buffer.size(), line_x, line_y, _sizes.scale,
             ortho
     );
 
     auto line_nr = 1;
     auto offset = _target_y - _current_y;
-    auto line_index_start = _lines.size() > _sizes.max_num_lines ? _lines.size() - _sizes.max_num_lines : 0;
-    for (auto i = line_index_start; i < _lines.size(); i++) {
-        auto &line = _lines[i];
-        _renderer.render(
-                line.data(), line.size(), line_x, client_height - offset - _sizes.line_height * line_nr, 0.5,
-                ortho
-        );
-        line_nr++;
+    auto line_index_start = _lines.size() > _sizes.max_num_lines ? (_lines.size() - _sizes.max_num_lines) : 0;
+    if (_sizes.max_num_lines > 0) {
+        for (auto i = line_index_start; i < _lines.size(); i++) {
+            auto &line = _lines[i];
+            _renderer.render(
+                    line.data(), line.size(), line_x, client_height - offset - _sizes.line_height * line_nr,
+                    _sizes.scale,
+                    ortho
+            );
+            line_nr++;
+        }
     }
 }
 

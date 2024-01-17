@@ -9,6 +9,14 @@
 #include "text_renderer.h"
 #include "list.h"
 
+
+// Might make a global event system instead, with various topics, but start simple
+enum class Commands {
+    NONE = 0,
+    ANTI_ALIAS_ON,
+    ANTI_ALIAS_OFF,
+};
+
 struct CliSizes {
     static constexpr f32 padding_x = 5;
     static constexpr f32 line_height = 30;
@@ -20,6 +28,8 @@ struct CliSizes {
     f32 width;
     f32 height;
 
+    f32 scale;
+
     auto update(f32 _width, f32 _height) {
         max_line_width = _width - 2*padding_x;
         // Margin from command line
@@ -27,6 +37,7 @@ struct CliSizes {
         height = _height;
         message_area_height = height - line_height - line_margin * 2;
         max_num_lines = static_cast<i32>(ceilf(message_area_height/line_height));
+        scale = 0.4;
     }
 };
 
