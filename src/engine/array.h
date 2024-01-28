@@ -8,6 +8,12 @@
 
 template<typename T>
 struct Array {
+    static auto create(size_t size, MemoryArena &arena) -> Array<T>* {
+        auto *result = allocate<Array>(arena, 1);
+        result->init(arena, size);
+        return result;
+    }
+
     Array() : _size(0), _data(nullptr) {}
     Array(T *values, size_t size) : _data{values}, _size{size} {}
     ~Array() = default;
@@ -18,7 +24,7 @@ struct Array {
     }
 
     auto init(MemoryArena &arena, size_t size) -> void {
-        _data = push_array<T>(&arena, size);
+        _data = allocate<T>(arena, size);
         _size = size;
     }
 

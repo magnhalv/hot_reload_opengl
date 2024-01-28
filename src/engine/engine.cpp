@@ -375,9 +375,7 @@ void load(GLFunctions *in_gl, Platform *in_platform, EngineMemory *in_memory) {
 
     assert(sizeof(EngineState) < Permanent_Memory_Block_Size);
     auto *state = (EngineState *) in_memory->permanent;
-    state->transient.size = Transient_Memory_Block_Size;
-    state->transient.used = 0;
-    state->transient.memory = (u8 *) in_memory->transient;
+    state->transient.init(in_memory->transient, Transient_Memory_Block_Size);
     set_transient_arena(&state->transient);
 
     assert(sizeof(AssetManager) <= Assets_Memory_Block_Size);

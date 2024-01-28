@@ -5,17 +5,12 @@
 #include "memory_arena.h"
 #include "memory.h"
 
-MemoryArena *transient = nullptr;
-const u32 GUARD_PATTERN = 0xEFBEADDE; // DEADBEEF
-
-struct ArenaGuard {
-    u32 guard_pattern;
-    ArenaGuard *next;
-};
+MemoryArena *g_transient = nullptr;
 
 auto MemoryArena::allocate(u64 request_size) -> void * {
-    if (size <= used + request_size + sizeof(ArenaGuard)) {
-        crash_and_burn("Failed to allocate %" PRIu64 " bytes. Only %" PRIu64 " remaining.", request_size, used - sizeof(ArenaGuard));
+    assert(memory != nullptr);
+    if (size < used + request_size + sizeof(ArenaGuard)) {
+        crash_and_burn("Failed to allocate %" PRIu64 " bytes. Only %" PRIu64 " remaining.", request_size, size - used - sizeof(ArenaGuard));
     }
 
     auto *previous_guard = reinterpret_cast<ArenaGuard *>(&memory[used - sizeof(ArenaGuard)]);
@@ -25,13 +20,16 @@ auto MemoryArena::allocate(u64 request_size) -> void * {
 
     void *result = &memory[used];
     used += request_size + sizeof(ArenaGuard);
+
     auto *new_guard = reinterpret_cast<ArenaGuard *>(&memory[used - sizeof(ArenaGuard)]);
     new_guard->guard_pattern = GUARD_PATTERN;
     new_guard->next = nullptr;
+    new_guard->prev = previous_guard;
+
     previous_guard->next = new_guard;
 
 
-    log_info("MemoryArena: allocated %llu bytes. %f %", request_size,
+    log_info("MemoryArena: allocated %llu bytes. Capacity: %.2f %%.", request_size,
              (static_cast<f32>(used)*100.0f)/ static_cast<f32>(size));
 
     return result;
@@ -47,19 +45,29 @@ auto MemoryArena::allocate_arena(u64 request_size) -> MemoryArena* {
 auto MemoryArena::clear() -> void {
     debug_set_memory(memory, size);
     used = sizeof(ArenaGuard);
-    auto *first_guard = reinterpret_cast<ArenaGuard *>(&memory[used - sizeof(ArenaGuard)]);
+    auto *first_guard = reinterpret_cast<ArenaGuard *>(memory);
     first_guard->guard_pattern = GUARD_PATTERN;
     first_guard->next = nullptr;
 }
 
 auto MemoryArena::check_integrity() const -> void {
     auto *guard = reinterpret_cast<ArenaGuard *>(memory);
+
+    if (guard == nullptr) {
+        crash_and_burn("MemoryArena: is not initialized. Always initialize arenas before use!");
+    }
+
+    i32 guard_index = 0;
+    if (guard->guard_pattern != GUARD_PATTERN) {
+        crash_and_burn("MemoryArena: integrity check failed at guard index %d", guard_index);
+    }
+
     while (guard->next != nullptr) {
-        if (guard->guard_pattern != GUARD_PATTERN) {
-            log_error("MemoryArena: integrity check failed. Exiting...");
-            exit(1);
-        }
         guard = guard->next;
+        guard_index++;
+        if (guard->guard_pattern != GUARD_PATTERN) {
+            crash_and_burn("MemoryArena: integrity check failed at guard index %d", guard_index);
+        }
     }
 }
 
@@ -72,28 +80,21 @@ auto MemoryArena::init(void *in_memory, u32 in_size) -> void {
 
 void set_transient_arena(MemoryArena *arena) {
     assert(arena->memory != nullptr);
-    transient = arena;
-    clear_transient();
+    assert(g_transient == nullptr);
+    g_transient = arena;
 }
 
+#if ENGINE_TEST
+void unset_transient_arena() {
+    g_transient = nullptr;
+}
+#endif
+
 void clear_transient() {
-    assert(transient != nullptr);
-    assert(transient->size % 4 == 0);
-    transient->used = 0;
-    // TODO: Add if debug
-    debug_set_memory(transient->memory, transient->size);
+    assert(g_transient != nullptr);
+    g_transient->clear();
 }
 
 void *allocate_transient(u64 request_size) {
-    assert(transient != nullptr);
-    if ((transient->used + request_size) > transient->size) {
-        log_info("Failed to allocate transient memory. The request was %d bytes, but only %d bytes remain.\n",
-                 request_size, (transient->size - transient->used));
-        exit(1);
-    }
-    void *result = transient->memory + transient->used;
-    transient->used = request_size + transient->used;
-
-    log_info("Allocated %llu / %llu bytes.", transient->used, transient->size);
-    return result;
+    return g_transient->allocate(request_size);
 }

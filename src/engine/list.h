@@ -14,7 +14,7 @@ struct List {
     ~List() = default;
 
     auto init(MemoryArena &arena, size_t max_size) -> void {
-        _data = push_array<T>(&arena, max_size);
+        _data = allocate<T>(arena, max_size);
         _size = 0;
         _max_size = max_size;
     }

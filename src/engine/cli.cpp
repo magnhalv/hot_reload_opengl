@@ -1,9 +1,10 @@
 #include "cli.h"
 #include <math/vec2.h>
+//#include "String.h"
+//#include "command_parser.h"
 
 const size_t RawBufferSize = KiloBytes(512);
 const size_t num_start_characters = 2;
-
 
 auto cubic_bezier(vec2 p0, vec2 p1, vec2 p2, vec2 p3, f32 t) -> vec2 {
     const f32 b = 1 - t;

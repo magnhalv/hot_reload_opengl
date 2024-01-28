@@ -2,8 +2,8 @@
 
 An example project for how to set up OpenGl with hot reloading.
 
-## TODO
+## TODO 
 
-* Anti-aliasing
-* Simple internal terminal
+* Turn on/off anti-aliasing with terminal
+* Global MemoryArena handling
 * Grid

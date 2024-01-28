@@ -3,8 +3,7 @@
 #include <platform/types.h>
 #include <cinttypes>
 
-const u8 GUARD_SIZE = 4;
-const u32 GUARD_PATTERN = 0xEFBEADDE; // DEADBEEF
+const u8 GUARD_SIZE = sizeof(GUARD_PATTERN);
 
 struct PoolAllocator {
     u64 num_pools;
