@@ -8,14 +8,16 @@
 
 template<typename T>
 struct Array {
-    static auto create(size_t size, MemoryArena &arena) -> Array<T>* {
+    static auto create(size_t size, MemoryArena &arena) -> Array<T> * {
         auto *result = allocate<Array>(arena, 1);
         result->init(arena, size);
         return result;
     }
 
     Array() : _size(0), _data(nullptr) {}
+
     Array(T *values, size_t size) : _data{values}, _size{size} {}
+
     ~Array() = default;
 
     auto init(T *values, size_t size) -> void {
@@ -38,7 +40,7 @@ struct Array {
         return _data[index];
     }
 
-    [[nodiscard]] auto inline data() const -> T* {
+    [[nodiscard]] auto inline data() const -> T * {
         return _data;
     }
 
@@ -48,21 +50,21 @@ struct Array {
 
     class ArrayIterator {
     private:
-        T* ptr;
+        T *ptr;
 
     public:
-        explicit ArrayIterator(T* ptr) : ptr(ptr) {}
+        explicit ArrayIterator(T *ptr) : ptr(ptr) {}
 
-        ArrayIterator& operator++() {
+        ArrayIterator &operator++() {
             ++ptr;
             return *this;
         }
 
-        bool operator!=(const ArrayIterator& other) const {
+        bool operator!=(const ArrayIterator &other) const {
             return ptr != other.ptr;
         }
 
-        T& operator*() const {
+        T &operator*() const {
             return *ptr;
         }
     };
@@ -75,10 +77,20 @@ struct Array {
         return ArrayIterator(_data + _size);
     }
 
-private:
     size_t _size;
     T *_data;
 };
+
+template<typename T>
+auto inline span(Array<T> &arr, size_t start, size_t end = -1) -> Array<T> {
+    if (end == -1) {
+        end = arr.size();
+    }
+    assert(start >= 0 && start < end);
+    assert(end <= arr.size());
+
+    return Array<T>{&arr[start], end - start};
+}
 
 extern template
 class Array<i32>;

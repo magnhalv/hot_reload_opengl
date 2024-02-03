@@ -9,6 +9,9 @@
 #include "ray.h"
 #include "renderer.h"
 
+// Globals
+GraphicsOptions *graphics_options = nullptr;
+
 auto Pointer::update_pos(const MouseRaw &raw, i32 client_width, i32 client_height) -> void {
     // TODO: Sensitivity must be moved somewhere else
     const f32 sensitivity = 2.0;
@@ -236,7 +239,13 @@ void update_and_render(EngineMemory *memory, EngineInput *app_input) {
     };
 
     // region Render setup
-    gl->bind_framebuffer(GL_FRAMEBUFFER, state->ms_framebuffer.fbo);
+    if (graphics_options->anti_aliasing) {
+        gl->bind_framebuffer(GL_FRAMEBUFFER, state->ms_framebuffer.fbo);
+    }
+    else {
+        gl->bind_framebuffer(GL_FRAMEBUFFER, state->framebuffer.fbo);
+    }
+
     gl->enable(GL_DEPTH_TEST);
     gl->clear_color(0.0f, 0.0f, 0.0f, 1.0f);
     gl->clear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -330,11 +339,13 @@ void update_and_render(EngineMemory *memory, EngineInput *app_input) {
 
     // region Draw end quad
     {
-        const i32 w = app_input->client_width;
-        const i32 h = app_input->client_height;
-        gl->bind_framebuffer(GL_READ_FRAMEBUFFER, state->ms_framebuffer.fbo);
-        gl->bind_framebuffer(GL_DRAW_FRAMEBUFFER, state->framebuffer.fbo);
-        gl->framebuffer_blit(0, 0, w, h, 0, 0, w, h, GL_COLOR_BUFFER_BIT, GL_NEAREST);
+        if (graphics_options->anti_aliasing) {
+            const i32 w = app_input->client_width;
+            const i32 h = app_input->client_height;
+            gl->bind_framebuffer(GL_READ_FRAMEBUFFER, state->ms_framebuffer.fbo);
+            gl->bind_framebuffer(GL_DRAW_FRAMEBUFFER, state->framebuffer.fbo);
+            gl->framebuffer_blit(0, 0, w, h, 0, 0, w, h, GL_COLOR_BUFFER_BIT, GL_NEAREST);
+        }
 
         state->quad_vao.bind();
         quad_program.useProgram();
@@ -380,4 +391,6 @@ void load(GLFunctions *in_gl, Platform *in_platform, EngineMemory *in_memory) {
 
     assert(sizeof(AssetManager) <= Assets_Memory_Block_Size);
     asset_manager_set_memory(in_memory->asset);
+
+    graphics_options = &state->graphics_options;
 }

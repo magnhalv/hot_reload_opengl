@@ -1,5 +1,7 @@
 #pragma once
 
+#pragma once
+
 #include <cassert>
 #include <platform/types.h>
 #include "math/vec3.h"
@@ -8,16 +10,16 @@
 
 // FixedList
 template<typename T>
-struct FList {
+struct GList {
 
-    explicit FList() : _size(0), _data(nullptr), _max_size(0) {}
+    explicit GList() : _size(0), _data(nullptr) {}
 
-    ~FList() = default;
+    ~GList() = default;
 
-    auto init(MemoryArena &arena, size_t max_size) -> void {
-        _data = allocate<T>(arena, max_size);
+    auto init(MemoryArena &arena) -> void {
+        _arena = &arena;
+        _data = nullptr;
         _size = 0;
-        _max_size = max_size;
     }
 
     T &operator[](size_t index) {
@@ -46,28 +48,16 @@ struct FList {
         return _size == 0;
     }
 
-    auto inline push(T *value) -> void {
-        assert(_size < _max_size);
-        _data[_size++] = *value;
-    }
-
-    auto inline push(T value) -> void {
-        assert(_size < _max_size);
+    auto inline push(T &value) -> void {
+        extend(_data, _arena, 1);
         _data[_size++] = value;
     }
 
-    auto inline push_range(const T *value, size_t length) -> T* {
-        assert(_size + length  <= _max_size);
-        memcpy(_data + _size, value, length);
-        auto result = &_data[_size];
-        _size += length;
-        return result;
-    }
-
-    auto inline pop(size_t num = 1) -> void {
+    // TODO: Need to implement shrink first
+    /*auto inline pop(size_t num = 1) -> void {
         assert(_size - num >= 0);
         _size -= num;
-    }
+    }*/
 
     class ListIterator {
     private:
@@ -98,25 +88,8 @@ struct FList {
         return ListIterator(_data + _size);
     }
 
-    [[nodiscard]] inline auto is_full() -> bool {
-        return _size == _max_size;
-    }
-
 private:
-    size_t _max_size{};
     size_t _size;
     T *_data;
+    MemoryArena *_arena;
 };
-
-extern template
-class FList<i32>;
-
-extern template
-class FList<f32>;
-
-extern template
-class FList<vec3>;
-
-extern template
-class FList<vec2>;
-

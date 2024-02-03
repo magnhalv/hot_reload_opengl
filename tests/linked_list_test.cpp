@@ -3,10 +3,10 @@
 #include <fixed_string.h>
 
 TEST_CASE_FIXTURE(SingleArenaFixture, "basic case with fixed strings") {
-    LinkedList<FixedString> list;
-    FixedString test_strings[2] = {
-            FixedString::create("test", arena),
-            FixedString::create("test2", arena)
+    LinkedList<FStr> list;
+    FStr test_strings[2] = {
+            FStr::create("test", arena),
+            FStr::create("test2", arena)
     };
     list.insert(test_strings[0], arena);
     list.insert(test_strings[1], arena);

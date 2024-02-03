@@ -18,7 +18,7 @@
 
 #include "allocators/pool_allocator.h"
 #include "array.h"
-#include "cli.h"
+#include "cli/cli.h"
 
 enum class PointerMode {
     NORMAL = 0,
@@ -43,6 +43,12 @@ struct Window {
     mat4 perspective;
 };
 
+struct GraphicsOptions {
+    bool anti_aliasing;
+};
+
+extern GraphicsOptions *graphics_options;
+
 struct EngineState {
     Pointer pointer;
     bool is_initialized = false;
@@ -66,6 +72,8 @@ struct EngineState {
     // Gameplay
     PointerMode pointer_mode;
     Cli cli;
+
+    GraphicsOptions graphics_options;
 
 };
 

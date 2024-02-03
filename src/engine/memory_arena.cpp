@@ -24,15 +24,34 @@ auto MemoryArena::allocate(u64 request_size) -> void * {
     auto *new_guard = reinterpret_cast<ArenaGuard *>(&memory[used - sizeof(ArenaGuard)]);
     new_guard->guard_pattern = GUARD_PATTERN;
     new_guard->next = nullptr;
-    new_guard->prev = previous_guard;
 
     previous_guard->next = new_guard;
+    _last = new_guard;
 
 
     log_info("MemoryArena: allocated %llu bytes. Capacity: %.2f %%.", request_size,
              (static_cast<f32>(used)*100.0f)/ static_cast<f32>(size));
 
     return result;
+}
+
+auto MemoryArena::extend(void *block_in, u64 size) -> void {
+    u8* block = static_cast<u8*>(block_in);
+    auto *previous_guard = reinterpret_cast<ArenaGuard *>(block - sizeof(ArenaGuard));
+    if (previous_guard->next != _last) {
+        crash_and_burn("MemoryArena: Tried to extend memory block that is not the final block.");
+    }
+
+    used+= size;
+    memset(previous_guard->next, 0, size);
+
+    auto *new_guard = reinterpret_cast<ArenaGuard *>(&memory[used - sizeof(ArenaGuard)]);
+    new_guard->guard_pattern = GUARD_PATTERN;
+    new_guard->next = nullptr;
+
+    previous_guard->next = new_guard;
+    _last = new_guard;
+
 }
 
 auto MemoryArena::allocate_arena(u64 request_size) -> MemoryArena* {
@@ -48,6 +67,7 @@ auto MemoryArena::clear() -> void {
     auto *first_guard = reinterpret_cast<ArenaGuard *>(memory);
     first_guard->guard_pattern = GUARD_PATTERN;
     first_guard->next = nullptr;
+    _last = first_guard;
 }
 
 auto MemoryArena::check_integrity() const -> void {

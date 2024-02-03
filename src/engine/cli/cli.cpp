@@ -1,7 +1,8 @@
 #include "cli.h"
 #include <math/vec2.h>
-//#include "String.h"
-//#include "command_parser.h"
+
+#include "echo.h"
+#include "graphics.h"
 
 const size_t RawBufferSize = KiloBytes(512);
 const size_t num_start_characters = 2;
@@ -31,7 +32,8 @@ auto Cli::handle_input(UserInput *input) -> void {
 
         if (input->enter.is_pressed_this_frame()) {
             _command_buffer.push('\0');
-            execute_command(_command_buffer.data(), _command_buffer.size());
+            FStr command = FStr::create(_command_buffer.data(), *_arena);
+            execute_command(command);
             if (_command_buffer.size() > num_start_characters) {
                 _command_buffer.pop(_command_buffer.size() - num_start_characters);
             }
@@ -60,11 +62,16 @@ auto Cli::init(GLShaderProgram *single_color, GLShaderProgram *font, MemoryArena
     _command_buffer.push('>');
     _command_buffer.push(' ');
 
-    _raw_text_buffer.init(*arena, KiloBytes(512));
-    _lines.init(*arena, 128);
+    _response_buffer.init(128*512, *arena);
 
     _renderer.init(font);
     _renderer.load_font("assets/fonts/ubuntu/Ubuntu-Regular.ttf", *_arena);
+
+
+    // region Init commands
+    _apps.init(*arena, 5);
+    register_echo(_apps, *arena);
+    register_graphics(_apps, *arena);
 }
 
 auto Cli::toggle(f32 client_height) -> bool {
@@ -135,12 +142,13 @@ auto Cli::render_text(f32 client_width, f32 client_height) -> void {
 
     auto line_nr = 1;
     auto offset = _target_y - _current_y;
-    auto line_index_start = _lines.size() > _sizes.max_num_lines ? (_lines.size() - _sizes.max_num_lines) : 0;
+    auto resp_size = _response_buffer.list.size();
+    auto line_index_start = resp_size > _sizes.max_num_lines ? (resp_size - _sizes.max_num_lines) : 0;
     if (_sizes.max_num_lines > 0) {
-        for (auto i = line_index_start; i < _lines.size(); i++) {
-            auto &line = _lines[i];
+        for (auto i = line_index_start; i < resp_size; i++) {
+            auto &line = _response_buffer.list[i];
             _renderer.render(
-                    line.data(), line.size(), line_x, client_height - offset - _sizes.line_height * line_nr,
+                    line.data(), line.len(), line_x, client_height - offset - _sizes.line_height * line_nr,
                     _sizes.scale,
                     ortho
             );
@@ -149,24 +157,16 @@ auto Cli::render_text(f32 client_width, f32 client_height) -> void {
     }
 }
 
-auto Cli::execute_command(const char *command, size_t length) -> void {
-    add_text(command, length);
-
-    char steffy[] = "> steffy is cute";
-    if (strcmp(command, steffy) == 0) {
-        char goat[] = "  ...a very cute baby goat runs over the screen!!!";
-        add_text(goat, sizeof(goat));
-    }
-    else {
-        char not_found[] = "  Command not found";
-        add_text(not_found, sizeof(not_found));
+auto Cli::execute_command(FStr &command) -> void {
+    _response_buffer.add(command);
+    auto split_command = split(command, ' ', *g_transient);
+    for (auto app: _apps) {
+        if (split_command[1] == app.name) {
+            auto command_wo_app_name = span(split_command, 2);
+            app.handle(command_wo_app_name, _response_buffer);
+            return;
+        }
     }
 
-}
-
-auto Cli::add_text(const char *text, size_t length) -> void {
-    char *line_start = _raw_text_buffer.push_range(text, length);
-    Array<char> line;
-    line.init(line_start, length);
-    _lines.push(line);
+    _response_buffer.add("  Command not found");
 }

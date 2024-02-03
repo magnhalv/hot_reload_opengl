@@ -3,19 +3,14 @@
 
 #include <platform/types.h>
 
-#include "gl/gl.h"
-#include "gl/gl_vao.h"
-#include "gl/gl_shader.h"
-#include "text_renderer.h"
-#include "list.h"
+#include "../gl/gl.h"
+#include "../gl/gl_vao.h"
+#include "../gl/gl_shader.h"
+#include "../text_renderer.h"
+#include "../list.h"
+#include "../linked_list_buffer.h"
 
-
-// Might make a global event system instead, with various topics, but start simple
-enum class Commands {
-    NONE = 0,
-    ANTI_ALIAS_ON,
-    ANTI_ALIAS_OFF,
-};
+#include "cli_app.h"
 
 struct CliSizes {
     static constexpr f32 padding_x = 5;
@@ -55,8 +50,7 @@ struct Cli {
     auto render_background(f32 client_width, f32 client_height) -> void;
     auto render_text(f32 client_width, f32 client_height) -> void;
 
-    auto execute_command(const char *command, size_t length) -> void;
-    auto add_text(const char* text, size_t length) -> void;
+    auto execute_command(FStr &command) -> void;
 
     f32 t;
     f32 _current_y;
@@ -67,10 +61,10 @@ struct Cli {
 
     MemoryArena *_arena;
 
-    List<char> _command_buffer;
-    List<char> _raw_text_buffer;
+    FList<char> _command_buffer;
+    LinkedListBuffer _response_buffer;
 
-    List<Array<char>> _lines;
+    FList<CliApp> _apps;
 
     CliSizes _sizes;
     TextRenderer _renderer;

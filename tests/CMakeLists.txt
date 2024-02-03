@@ -5,7 +5,7 @@ project(test_project VERSION 0.0.1 LANGUAGES CXX)
 add_executable(tests
         test_main.cpp
         memory_arena_test.cpp
-        command_parser_test.cpp
+        cli_echo_test.cpp
         linked_list_test.cpp
         fixed_string_test.cpp
         )

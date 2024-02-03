@@ -12,7 +12,7 @@ TEST_CASE_FIXTURE(SingleArenaFixture, "filling the arena") {
 }
 
 TEST_CASE_FIXTURE(SingleArenaFixture, "allocate more than size (due to arena guard)") {
-    CHECK_CRASH(arena.allocate(default_size), "Failed to allocate 1024 bytes. Only 1000 remaining.");
+    CHECK_CRASH(arena.allocate(default_size), "Failed to allocate 1024 bytes. Only 1008 remaining.");
 }
 
 TEST_CASE_FIXTURE(SingleArenaFixture, "integrity should work with no allocations made") {
@@ -38,4 +38,19 @@ TEST_CASE_FIXTURE(SingleArenaFixture, "failed integrity array") {
         array[i] = 5;
     }
     CHECK_CRASH(arena.check_integrity(), "MemoryArena: integrity check failed at guard index 1");
+}
+
+TEST_CASE_FIXTURE(SingleArenaFixture, "failed integrity array") {
+    u8* array =  static_cast<u8*>(arena.allocate(256));
+    for (auto i = 0; i < 256; i++) {
+        array[i] = 5;
+    }
+    // Should work
+    arena.check_integrity();
+    arena.extend(static_cast<void*>(array), 256);
+    // We've extended the array to be 256 + 256 bytes
+    for (auto i = 0; i < 512; i++) {
+        array[i] = 5;
+    }
+    arena.check_integrity();
 }

@@ -4,8 +4,8 @@
 
 template<typename T>
 struct LinkedListEntry {
-    T *data;
-    LinkedListEntry<T> *next;
+    T *data = nullptr;
+    LinkedListEntry<T> *next = nullptr;
 };
 
 template<typename T>
@@ -55,6 +55,30 @@ struct LinkedList {
         add_link(stored_data, arena);
         return stored_data;
     }
+
+    auto inline insert(T &&data, MemoryArena &arena) -> T* {
+        auto *stored_data = allocate<T>(arena);
+        memcpy_s(stored_data, sizeof(T), &data, sizeof(T));
+        add_link(stored_data, arena);
+        return stored_data;
+    }
+
+    auto inline alloc(MemoryArena &arena) -> T* {
+        _size++;
+        auto *entry = allocate<LinkedListEntry<T>>(arena);
+        // This might be really dumb, perhaps we don't need the linked list?
+        auto *data = allocate<T>(arena);
+        entry->data = data;
+        if (_last != nullptr) {
+            _last->next = entry;
+        }
+        if (_first == nullptr) {
+            _first = entry;
+        }
+        _last = entry;
+        return entry->data;
+    }
+
 
     class LinkedListIterator {
     private:

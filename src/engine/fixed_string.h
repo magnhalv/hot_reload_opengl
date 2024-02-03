@@ -1,45 +1,55 @@
 #pragma once
 
 #include <platform/types.h>
-#include <array.h>
+#include "array.h"
 #include <cstring>
 #include <cassert>
 
 #include "memory_arena.h"
 
-struct FixedString {
+/// @brief FixedString
+struct FStr {
     // TODO: Remove this, too risky
-    [[nodiscard]] static auto create(const char *s, MemoryArena &arena) -> FixedString {
+    [[nodiscard]] static auto create(const char *s, MemoryArena &arena) -> FStr {
         auto length = strlen(s);
-        return FixedString::create(s, length, arena);
+        return FStr::create(s, length, arena);
     }
 
-    [[nodiscard]] static auto create(const char *s, u32 length, MemoryArena &arena) -> FixedString {
+    [[nodiscard]] static auto create(const char *s, u32 length, MemoryArena &arena) -> FStr {
         char *data = static_cast<char *>(arena.allocate(strlen(s) + 1));
         for (auto i = 0; i < length; i++) {
             data[i] = s[i];
         }
         data[length] = '\0';
 
-        return FixedString{
+        return FStr{
                 ._data = data,
                 ._length = length
         };
     }
 
-    [[nodiscard]] static inline auto create(const char *s, u32 length, MemoryArena *arena) -> FixedString {
-        return FixedString::create(s, length, *arena);
+    [[nodiscard]] static inline auto create(const char *s, u32 length, MemoryArena *arena) -> FStr {
+        return FStr::create(s, length, *arena);
+    }
+
+    inline auto init(const char *s, MemoryArena &arena) {
+        _length = strlen(s);
+        _data = static_cast<char *>(arena.allocate(strlen(s) + 1));
+        for (auto i = 0; i < _length; i++) {
+            _data[i] = s[i];
+        }
+        _data[_length] = '\0';
     }
 
     [[nodiscard]] inline auto data() const -> const char* {
         return _data;
     }
 
-    [[nodiscard]] auto substring(i32 start, i32 length, MemoryArena &arena) const -> FixedString {
+    [[nodiscard]] auto substring(i32 start, i32 length, MemoryArena &arena) const -> FStr {
         assert(start >= 0);
         assert(length >= 0);
         assert (start + length <= len());
-        return FixedString::create(&_data[start], length, arena);
+        return FStr::create(&_data[start], length, arena);
 
     }
 
@@ -48,7 +58,7 @@ struct FixedString {
         return _data[index];
     }
 
-    bool operator==(const FixedString other) const {
+    bool operator==(const FStr other) const {
         if (_length != other.len()) {
             return false;
         }
@@ -81,7 +91,7 @@ struct FixedString {
     u32 _length;
 };
 
-auto inline split(FixedString str, char delimiter, MemoryArena &arena) -> Array<FixedString>& {
+auto inline split(FStr str, char delimiter, MemoryArena &arena) -> Array<FStr>& {
     i32 num_entries = 0;
     bool has_non_delimiter_values;
     // "" -> 0
@@ -101,7 +111,7 @@ auto inline split(FixedString str, char delimiter, MemoryArena &arena) -> Array<
         }
     }
 
-    Array<FixedString> &result = *Array<FixedString>::create(num_entries, arena);
+    Array<FStr> &result = *Array<FStr>::create(num_entries, arena);
     if (result.size() == 0) {
         return result;
     }

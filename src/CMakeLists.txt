@@ -8,18 +8,22 @@ set(SOURCE_FILES
         engine/array.cpp
         engine/asset_import.cpp
         engine/asset_manager.cpp
+
+        engine/cli/cli.cpp
+
         engine/engine.cpp
+
         engine/gl/gl.cpp
         engine/gl/gl_shader.cpp
         engine/gl/gl_vao.cpp
+
+        engine/logger.cpp
         engine/memory.cpp
         engine/memory_arena.cpp
         engine/platform.cpp
         engine/ray.cpp
         engine/renderer.cpp
         engine/text_renderer.cpp
-        engine/cli.cpp
-        engine/logger.cpp
         )
 
 add_library(engine_dyn SHARED ${SOURCE_FILES})
