@@ -4,7 +4,12 @@ An example project for how to set up OpenGl with hot reloading.
 
 ## TODO 
 
-* Handle 
-* Turn on/off anti-aliasing with terminal
-* Global MemoryArena handling
 * Grid
+* Global MemoryArena handling
+* Make shaders global
+
+### Cli
+
+* Add separate color for input text
+* Add auto-complete
+* Add help
