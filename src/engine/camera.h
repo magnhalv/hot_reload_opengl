@@ -54,7 +54,7 @@ struct Camera {
     void update_cursor(f32 dx, f32 dy) {
         f32 sensitivity = 0.2f;
         _yaw += dx * sensitivity;
-        _pitch -= dy * sensitivity;
+        _pitch += dy * sensitivity;
 
         if (_pitch > 89.0f) {
             _pitch = 89.0f;
