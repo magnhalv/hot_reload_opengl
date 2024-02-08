@@ -103,9 +103,11 @@ void update_and_render(EngineMemory *memory, EngineInput *app_input) {
         single_color_program.initialize(R"(.\assets\shaders\basic_2d.vert)", R"(.\assets\shaders\single_color.frag)");
         quad_program.initialize(R"(.\assets\shaders\quad.vert)", R"(.\assets\shaders\quad.frag)");
 
-        state->uniform_buffer_container.add(&state->mvp, sizeof(mat4), 0, 0);
-        state->uniform_buffer_container.add(&state->light, sizeof(LightData), 1, 0);
-        state->uniform_buffer_container.add(&state->material, sizeof(Material), 2, 0);
+        state->uniform_buffer_container.init(UniformBuffer::PerFrame, allocate<PerFrameData>(state->permanent), sizeof(PerFrameData));
+        state->uniform_buffer_container.init(
+                UniformBuffer::Light, allocate<LightData>(state->permanent), sizeof(LightData));
+        state->uniform_buffer_container.init(
+                UniformBuffer::Material, allocate<Material>(state->permanent), sizeof(Material));
 
         // endregion
 
@@ -144,8 +146,8 @@ void update_and_render(EngineMemory *memory, EngineInput *app_input) {
         state->quad_vao.init();
         state->quad_vao.bind();
         state->quad_vao.add_buffer(sizeof(quad_verticies));
-        state->quad_vao.add_buffer_desc(0, 0, 2, 0, 4*sizeof(f32));
-        state->quad_vao.add_buffer_desc(0, 1, 2, 2 * sizeof(f32), 4*sizeof(f32));
+        state->quad_vao.add_buffer_desc(0, 0, 2, 0, 4 * sizeof(f32));
+        state->quad_vao.add_buffer_desc(0, 1, 2, 2 * sizeof(f32), 4 * sizeof(f32));
         state->quad_vao.upload_buffer_desc();
         state->quad_vao.upload_buffer_data(0, quad_verticies, 0, sizeof(quad_verticies));
 
@@ -164,7 +166,8 @@ void update_and_render(EngineMemory *memory, EngineInput *app_input) {
     asset_manager->update_if_changed();
 #endif
 
-    state->material = get_material("metal");
+    auto *material = state->uniform_buffer_container.get_location<Material>(UniformBuffer::Material);
+    *material = get_material("metal");
 
     const auto projection = perspective(45.0f, ratio, 0.1f, 100.0f);
     const auto ortho_projection = create_ortho(0, app_input->client_width, 0, app_input->client_height, 0.0f, 100.0f);
@@ -190,7 +193,8 @@ void update_and_render(EngineMemory *memory, EngineInput *app_input) {
             if (mouse->left.is_pressed_this_frame()) {
                 if (hovered_mesh == nullptr) {
                     state->pointer_mode = PointerMode::LOOK_AROUND;
-                } else {
+                }
+                else {
                     state->pointer_mode = PointerMode::GRAB;
                 }
             }
@@ -210,7 +214,8 @@ void update_and_render(EngineMemory *memory, EngineInput *app_input) {
     else {
         if (state->pointer_mode == PointerMode::NORMAL || state->pointer_mode == PointerMode::GRAB) {
             state->pointer.update_pos(*mouse, app_input->client_width, app_input->client_height);
-        } else {
+        }
+        else {
             state->camera.update_cursor(static_cast<f32>(mouse->dx), static_cast<f32>(mouse->dy));
         }
         state->pointer.update_ray(view, inv_projection, app_input->client_width, app_input->client_height);
@@ -254,14 +259,18 @@ void update_and_render(EngineMemory *memory, EngineInput *app_input) {
 
     // region Render
     mesh_program.useProgram();
+    auto *mvp_ubuf = state->uniform_buffer_container.get_location<PerFrameData>(UniformBuffer::PerFrame);
+    mvp_ubuf->projection = projection;
+    mvp_ubuf->view = view;
+    auto *light_ubuf = state->uniform_buffer_container.get_location<LightData>(UniformBuffer::Light);
     for (auto &mesh: state->meshes) {
         if (hovered_mesh != nullptr && mesh.id == hovered_mesh->id && state->pointer_mode != PointerMode::LOOK_AROUND) {
             continue;
         }
 
         const mat4 m = mesh.transform.to_mat4();
-        state->light = light.to_data(inverse(m), state->camera.get_position());
-        state->mvp = pv * m;
+        *light_ubuf = light.to_data(inverse(m), state->camera.get_position());
+        mvp_ubuf->model = m;
 
         mesh.vao.bind();
         state->uniform_buffer_container.upload();
@@ -273,8 +282,8 @@ void update_and_render(EngineMemory *memory, EngineInput *app_input) {
         enable_stencil_test();
 
         const mat4 m = hovered_mesh->transform.to_mat4();
-        state->light = light.to_data(inverse(m), state->camera.get_position());
-        state->mvp = pv * m;
+        *light_ubuf = light.to_data(inverse(m), state->camera.get_position());
+        mvp_ubuf->model = m;
 
         hovered_mesh->vao.bind();
         state->uniform_buffer_container.upload();
@@ -290,7 +299,7 @@ void update_and_render(EngineMemory *memory, EngineInput *app_input) {
         t.scale.y = 1.1;
         t.scale.z = 1.1;
 
-        state->mvp = pv * t.to_mat4();
+        mvp_ubuf->model = t.to_mat4();
         state->uniform_buffer_container.upload();
         gl->draw_arrays(GL_TRIANGLES, 0, hovered_mesh->num_vertices);
 
@@ -321,8 +330,8 @@ void update_and_render(EngineMemory *memory, EngineInput *app_input) {
         f32 y = state->pointer.y;
         f32 cursor_vertices[6] = {
                 x, y,
-                x + new_x(-10.0f, -20.0f, 45.0f), y + new_y( - 10,  - 20, 45.0f),
-                x + new_x(10.0f, -20.0f, 45.0f), y+ new_y(10, - 20, 45.0f),
+                x + new_x(-10.0f, -20.0f, 45.0f), y + new_y(-10, -20, 45.0f),
+                x + new_x(10.0f, -20.0f, 45.0f), y + new_y(10, -20, 45.0f),
         };
         GLVao cursor_vao{};
         cursor_vao.init();

@@ -5,6 +5,7 @@ layout(std140, binding = 0) uniform PerFrameData
 {
     mat4 view;
     mat4 proj;
+    mat4 model;
     vec4 cameraPos;
 };
 

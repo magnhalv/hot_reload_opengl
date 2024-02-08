@@ -50,13 +50,23 @@ private:
     GLuint _handle{};
 };
 
+enum class UniformBuffer: i32 {
+    PerFrame = 0,
+    Light = 1,
+    Material = 2
+};
+
 struct GLGlobalUniformBufferContainer {
 public:
-    auto add(void *data, GLsizeiptr size, u32 index, GLbitfield flags) -> bool;
+    auto init(UniformBuffer index, void *data, GLsizeiptr size, GLbitfield flags = 0) -> bool;
     auto upload() const -> void;
+
+    template<typename T>
+    auto get_location(UniformBuffer idx) -> T* {
+        return (T*)_uniform_buffers[+idx].data;
+    }
 private:
-    GLUniformBuffer _uniform_buffers[Max_Buffers]{};
-    u32 _num_uniform_buffers{};
+    GLUniformBuffer _uniform_buffers[Max_Buffers];
 };
 
 GLenum GLShaderType_from_file_name(const char *file_name);

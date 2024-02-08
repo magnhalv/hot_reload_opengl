@@ -17,6 +17,7 @@ struct Light {
     f32 radius{};
     vec3 color;
 
+    /// @brief Converts to uniform data buffer format
     [[nodiscard]] auto to_data(mat4 to_model_space, vec3 eye_pos) const -> LightData {
         vec4 pos_ms = to_model_space * to_vec4(position_ws);
         return {

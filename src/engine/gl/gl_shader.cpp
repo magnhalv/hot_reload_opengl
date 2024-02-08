@@ -236,14 +236,11 @@ void GLShaderProgram::useProgram() const {
     }
 }
 
-auto GLGlobalUniformBufferContainer::add(void *data, GLsizeiptr size, u32 index, GLbitfield flags) -> bool {
-    if (_num_uniform_buffers == Max_Buffers) {
-        return false;
-    }
-    auto &buffer = _uniform_buffers[_num_uniform_buffers++];
+auto GLGlobalUniformBufferContainer::init(UniformBuffer index, void *data, GLsizeiptr size, GLbitfield flags) -> bool {
+    auto &buffer = _uniform_buffers[+index];
     buffer.data = data;
     buffer.size = size;
-    buffer.index = index;
+    buffer.index = +index;
     buffer.flags = flags;
 
     gl->create_buffers(1, &buffer.handle);
@@ -252,8 +249,7 @@ auto GLGlobalUniformBufferContainer::add(void *data, GLsizeiptr size, u32 index,
 }
 
 auto GLGlobalUniformBufferContainer::upload() const -> void {
-    for (i32 i = 0; i < _num_uniform_buffers; i++) {
-        auto buffer = _uniform_buffers[i];
+    for (auto buffer : _uniform_buffers) {
         gl->bind_buffer_base(GL_UNIFORM_BUFFER, buffer.index, buffer.handle);
         gl->named_buffer_sub_data(buffer.handle, 0, buffer.size, buffer.data);
     }

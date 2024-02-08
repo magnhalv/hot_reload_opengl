@@ -4,6 +4,7 @@
 #include <cstdint>
 #include <cfloat>
 #include <cinttypes>
+#include <type_traits>
 
 using i8 = int8_t;
 using i16 = int16_t;
@@ -28,5 +29,11 @@ constexpr u64 GigaBytes(u64 num_gb) noexcept { return MegaBytes(1024 * num_gb); 
 
 const i32 Max_Path_Length = 128;
 
+template <typename T>
+constexpr auto operator+(T e) noexcept
+-> std::enable_if_t<std::is_enum<T>::value, std::underlying_type_t<T>>
+{
+    return static_cast<std::underlying_type_t<T>>(e);
+}
 
 #endif //HOT_RELOAD_OPENGL_TYPES_H

@@ -49,6 +49,12 @@ struct GraphicsOptions {
 
 extern GraphicsOptions *graphics_options;
 
+struct PerFrameData {
+    mat4 projection;
+    mat4 view;
+    mat4 model;
+};
+
 struct EngineState {
     Pointer pointer;
     bool is_initialized = false;
@@ -61,11 +67,6 @@ struct EngineState {
     Framebuffer framebuffer;
     MultiSampleFramebuffer ms_framebuffer;
     GLVao quad_vao{};
-
-    // TODO: Should this be global state? Might need computable buffers
-    LightData light;
-    Material material;
-    mat4 mvp;
 
     bool is_cli_enabled;
 
