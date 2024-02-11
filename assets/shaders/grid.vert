@@ -3,10 +3,10 @@
 
 layout(std140, binding = 0) uniform PerFrameData
 {
-    mat4 view;
     mat4 proj;
+    mat4 view;
     mat4 model;
-    vec4 cameraPos;
+    vec4 camera_pos;
 };
 
 struct Vertex
@@ -63,10 +63,10 @@ void main()
     int idx = indices[gl_VertexID];
     vec3 position = pos[idx] * gridSize;
 
-    position.x += cameraPos.x;
-    position.z += cameraPos.z;
+    position.x += camera_pos.x;
+    position.z += camera_pos.z;
 
-    out_camPos = cameraPos.xz;
+    out_camPos = camera_pos.xz;
 
     gl_Position = MVP * vec4(position, 1.0);
     uv = position.xz;

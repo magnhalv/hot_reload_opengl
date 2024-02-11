@@ -4,6 +4,7 @@ layout(std140, binding = 0) uniform PerFrameData
     mat4 proj;
     mat4 view;
     mat4 model;
+    vec4 camera_pos;
 };
 layout (location=0) in vec3 pos;
 layout (location=1) in vec3 norm_in;

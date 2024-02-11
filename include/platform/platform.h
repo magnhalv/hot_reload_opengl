@@ -80,6 +80,7 @@ struct GLFunctions {
     PFNGLPIXELSTOREIPROC pixel_store_i;
     PFNGLUNIFORMMATRIX4FVPROC gl_uniform_matrix_4_fv;
     PFNGLBLENDFUNCPROC blend_func;
+    PFNGLDRAWARRAYSINSTANCEDBASEINSTANCEPROC draw_arrays_instanced_base_instance;
 };
 
 const u32 Gl_Invalid_Id = 0;

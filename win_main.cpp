@@ -642,6 +642,7 @@ void win32_bind_gl_funcs(GLFunctions *gl) {
     gl->gl_uniform_matrix_4_fv = glUniformMatrix4fv;
     gl->blend_func = glBlendFunc;
     gl->uniform_3f = glUniform3f;
+    gl->draw_arrays_instanced_base_instance = glDrawArraysInstancedBaseInstance;
 }
 
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR szCmdLine, int iCmdShow) {

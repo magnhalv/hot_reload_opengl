@@ -28,3 +28,15 @@ target_link_libraries(hot_reload_opengl ${OPENGL_gl_LIBRARY} )
 # Something related to assimp.
 add_subdirectory(src)
 add_subdirectory(tests)
+
+# compile_commands.json
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON CACHE INTERNAL "")
+
+if(EXISTS "${CMAKE_CURRENT_BINARY_DIR}/compile_commands.json")
+    add_custom_command(
+            TARGET hot_reload_opengl POST_BUILD
+            COMMAND ${CMAKE_COMMAND} -E copy_if_different
+            "${CMAKE_CURRENT_BINARY_DIR}/compile_commands.json"
+            "${CMAKE_SOURCE_DIR}/compile_commands.json"
+    )
+endif()

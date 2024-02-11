@@ -2,7 +2,13 @@
 cmake-build-debug-visual-studio
 deps/src
 deps/archives
+bin
+.cache
 build
 engine/deps/src
 engine/deps/archives
 *.dat
+
+*vim
+compile_commands.json
+
