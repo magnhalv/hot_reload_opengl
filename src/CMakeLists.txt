@@ -24,6 +24,7 @@ set(SOURCE_FILES
         engine/ray.cpp
         engine/renderer.cpp
         engine/text_renderer.cpp
+        engine/options.cpp
         )
 
 add_library(engine_dyn SHARED ${SOURCE_FILES})

@@ -1,6 +1,7 @@
 #pragma once
 
 #include "../engine.h"
+#include "../options.hpp"
 #include "cli_app.h"
 
 auto inline handle_graphics(Array<FStr>& args, LinkedListBuffer& buf) -> void {
@@ -18,7 +19,6 @@ auto inline handle_graphics(Array<FStr>& args, LinkedListBuffer& buf) -> void {
     } else {
       buf.add(help_message);
     }
-    return;
   } else if (args[0] == "grid") {
     if (args[1] == "on") {
       graphics_options->enable_grid = true;
@@ -27,10 +27,11 @@ auto inline handle_graphics(Array<FStr>& args, LinkedListBuffer& buf) -> void {
     } else {
       buf.add(help_message);
     }
-    return;
   } else {
     buf.add(help_message);
   }
+
+  save_to_file(graphics_options);
 }
 
 auto inline register_graphics(FList<CliApp>& apps, MemoryArena& arena) -> void {

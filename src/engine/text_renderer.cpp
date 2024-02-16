@@ -4,6 +4,7 @@
 #include FT_FREETYPE_H
 
 #include "memory_arena.h"
+#include "logger.h"
 
 auto TextRenderer::load_font(const char *path, MemoryArena &permanent_arena) -> void {
     FT_Library ft;

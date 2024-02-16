@@ -12,6 +12,7 @@
 #include "gl/gl_vao.h"
 #include "memory_arena.h"
 #include "mesh.h"
+#include "options.hpp"
 
 enum class PointerMode { NORMAL = 0, LOOK_AROUND, GRAB };
 
@@ -30,11 +31,6 @@ struct Window {
   f32 height;
   mat4 ortho;
   mat4 perspective;
-};
-
-struct GraphicsOptions {
-  bool anti_aliasing;
-  bool enable_grid;
 };
 
 extern GraphicsOptions* graphics_options;

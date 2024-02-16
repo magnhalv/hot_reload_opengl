@@ -2,6 +2,8 @@
 cmake-build-debug-visual-studio
 deps/src
 deps/archives
+deps/src
+deps/archives
 bin
 .cache
 build

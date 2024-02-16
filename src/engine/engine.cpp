@@ -9,6 +9,7 @@
 #include "engine.h"
 #include "gl/gl.h"
 #include "material.h"
+#include "options.hpp"
 #include "platform.h"
 #include "ray.h"
 #include "renderer.h"
@@ -19,8 +20,8 @@ GraphicsOptions* graphics_options = nullptr;
 auto Pointer::update_pos(const MouseRaw& raw, i32 client_width, i32 client_height) -> void {
   // TODO: Sensitivity must be moved somewhere else
   const f32 sensitivity = 2.0;
-  const f32 dx          = static_cast<f32>(raw.dx) * sensitivity;
-  const f32 dy          = static_cast<f32>(raw.dy) * sensitivity;
+  const f32 dx = static_cast<f32>(raw.dx) * sensitivity;
+  const f32 dy = static_cast<f32>(raw.dy) * sensitivity;
 
   x = min(max(dx + x, 0.0f), static_cast<f32>(client_width));
   y = min(max(dy + y, 0.0f), static_cast<f32>(client_height));
@@ -35,8 +36,8 @@ auto Pointer::update_ray(const mat4& view, const mat4& inv_projection, i32 clien
   vec4 mouse_pos = vec4(normalized_x, normalized_y, -1.0f, 1.f);
 
   vec4 mouse_eye_coords = inv_projection * mouse_pos;
-  mouse_eye_coords.z    = -1.0f;
-  mouse_eye_coords.w    = 0.0f;
+  mouse_eye_coords.z = -1.0f;
+  mouse_eye_coords.w = 0.0f;
 
   ray = normalized(to_vec3(inv_view_matrix * mouse_eye_coords));
 }
@@ -55,15 +56,15 @@ inline f32 new_y(f32 x, f32 y, f32 degree) {
 }
 
 void update_and_render(EngineMemory* memory, EngineInput* app_input) {
-  auto* state     = (EngineState*)memory->permanent;
+  auto* state = (EngineState*)memory->permanent;
   const f32 ratio = static_cast<f32>(app_input->client_width) / static_cast<f32>(app_input->client_height);
 
-  auto& mesh_program                 = asset_manager->shader_programs[0];
-  auto& single_color_mesh_program    = asset_manager->shader_programs[1];
-  auto& single_color_program         = asset_manager->shader_programs[2];
-  auto& quad_program                 = asset_manager->shader_programs[3];
-  auto& font_program                 = asset_manager->shader_programs[4];
-  auto& grid_program                 = asset_manager->shader_programs[5];
+  auto& mesh_program = asset_manager->shader_programs[0];
+  auto& single_color_mesh_program = asset_manager->shader_programs[1];
+  auto& single_color_program = asset_manager->shader_programs[2];
+  auto& quad_program = asset_manager->shader_programs[3];
+  auto& font_program = asset_manager->shader_programs[4];
+  auto& grid_program = asset_manager->shader_programs[5];
   asset_manager->num_shader_programs = 5;
 
   // region Initialize
@@ -83,16 +84,16 @@ void update_and_render(EngineMemory* memory, EngineInput* app_input) {
     state->meshes.init(static_cast<Mesh*>(state->permanent.allocate(sizeof(Mesh) * num_meshes)), num_meshes);
 
     import_mesh("assets/meshes/asset_Cube.fbx", &state->meshes[0]);
-    state->meshes[0].id                   = 1;
+    state->meshes[0].id = 1;
     state->meshes[0].transform.position.x = 0;
     state->meshes[0].transform.position.y = 0;
     state->meshes[0].transform.position.z = 0;
     import_mesh("assets/meshes/asset_Sphere.fbx", &state->meshes[1]);
     state->meshes[1].transform.position.x = -10;
-    state->meshes[1].id                   = 2;
+    state->meshes[1].id = 2;
     import_mesh("assets/meshes/asset_Suzanne.fbx", &state->meshes[2]);
     state->meshes[2].transform.position.x = 10;
-    state->meshes[2].id                   = 3;
+    state->meshes[2].id = 3;
 
     state->framebuffer.init(app_input->client_width, app_input->client_height);
     state->ms_framebuffer.init(app_input->client_width, app_input->client_height);
@@ -108,6 +109,9 @@ void update_and_render(EngineMemory* memory, EngineInput* app_input) {
     state->uniform_buffer_container.init(UniformBuffer::PerFrame, allocate<PerFrameData>(state->permanent), sizeof(PerFrameData));
     state->uniform_buffer_container.init(UniformBuffer::Light, allocate<LightData>(state->permanent), sizeof(LightData));
     state->uniform_buffer_container.init(UniformBuffer::Material, allocate<Material>(state->permanent), sizeof(Material));
+
+    assert(graphics_options != nullptr);
+    read_from_file(graphics_options);
 
     // endregion
 
@@ -169,14 +173,14 @@ void update_and_render(EngineMemory* memory, EngineInput* app_input) {
 #endif
 
   auto* material = state->uniform_buffer_container.get_location<Material>(UniformBuffer::Material);
-  *material      = get_material("metal");
+  *material = get_material("metal");
 
-  const auto projection       = perspective(45.0f, ratio, 0.1f, 100.0f);
+  const auto projection = perspective(45.0f, ratio, 0.1f, 100.0f);
   const auto ortho_projection = create_ortho(0, app_input->client_width, 0, app_input->client_height, 0.0f, 100.0f);
-  const auto inv_projection   = inverse(projection);
-  const auto view             = state->camera.get_view();
+  const auto inv_projection = inverse(projection);
+  const auto view = state->camera.get_view();
 
-  Pointer* pointer      = &state->pointer;
+  Pointer* pointer = &state->pointer;
   const MouseRaw* mouse = &app_input->input.mouse_raw;
 
   Mesh* hovered_mesh = nullptr;
@@ -219,10 +223,10 @@ void update_and_render(EngineMemory* memory, EngineInput* app_input) {
 
   Mesh floor;
   floor.num_vertices = 4;
-  floor.vertices[0]  = vec3(F32_MAX, 0, F32_MAX);
-  floor.vertices[1]  = vec3(-F32_MAX, 0, F32_MAX);
-  floor.vertices[2]  = vec3(-F32_MAX, 0, -F32_MAX);
-  floor.vertices[3]  = vec3(F32_MAX, 0, -F32_MAX);
+  floor.vertices[0] = vec3(F32_MAX, 0, F32_MAX);
+  floor.vertices[1] = vec3(-F32_MAX, 0, F32_MAX);
+  floor.vertices[2] = vec3(-F32_MAX, 0, -F32_MAX);
+  floor.vertices[3] = vec3(F32_MAX, 0, -F32_MAX);
 
   vec2 floor_intersections;
   if (intersects(state->camera.get_position(), pointer->ray, floor, floor_intersections) &&
@@ -234,8 +238,8 @@ void update_and_render(EngineMemory* memory, EngineInput* app_input) {
 
   const Light light = {
     .position_ws = vec3(0, 2.0f, 2.0f),
-    .radius      = 20.0f,
-    .color       = vec3(1.0, 1.0, 1.0),
+    .radius = 20.0f,
+    .color = vec3(1.0, 1.0, 1.0),
   };
 
   // region Render setup
@@ -254,17 +258,17 @@ void update_and_render(EngineMemory* memory, EngineInput* app_input) {
   // region Render
 
   mesh_program.useProgram();
-  auto* mvp_ubuf       = state->uniform_buffer_container.get_location<PerFrameData>(UniformBuffer::PerFrame);
+  auto* mvp_ubuf = state->uniform_buffer_container.get_location<PerFrameData>(UniformBuffer::PerFrame);
   mvp_ubuf->projection = projection;
-  mvp_ubuf->view       = view;
-  auto* light_ubuf     = state->uniform_buffer_container.get_location<LightData>(UniformBuffer::Light);
+  mvp_ubuf->view = view;
+  auto* light_ubuf = state->uniform_buffer_container.get_location<LightData>(UniformBuffer::Light);
   for (auto& mesh : state->meshes) {
     if (hovered_mesh != nullptr && mesh.id == hovered_mesh->id && state->pointer_mode != PointerMode::LOOK_AROUND) {
       continue;
     }
 
-    const mat4 m    = mesh.transform.to_mat4();
-    *light_ubuf     = light.to_data(inverse(m), state->camera.get_position());
+    const mat4 m = mesh.transform.to_mat4();
+    *light_ubuf = light.to_data(inverse(m), state->camera.get_position());
     mvp_ubuf->model = m;
 
     mesh.vao.bind();
@@ -276,8 +280,8 @@ void update_and_render(EngineMemory* memory, EngineInput* app_input) {
   if (hovered_mesh != nullptr && state->pointer_mode != PointerMode::LOOK_AROUND) {
     enable_stencil_test();
 
-    const mat4 m    = hovered_mesh->transform.to_mat4();
-    *light_ubuf     = light.to_data(inverse(m), state->camera.get_position());
+    const mat4 m = hovered_mesh->transform.to_mat4();
+    *light_ubuf = light.to_data(inverse(m), state->camera.get_position());
     mvp_ubuf->model = m;
 
     hovered_mesh->vao.bind();
@@ -289,7 +293,7 @@ void update_and_render(EngineMemory* memory, EngineInput* app_input) {
     single_color_mesh_program.useProgram();
 
     hovered_mesh->vao.bind();
-    auto t    = hovered_mesh->transform;
+    auto t = hovered_mesh->transform;
     t.scale.x = 1.1;
     t.scale.y = 1.1;
     t.scale.z = 1.1;
@@ -302,7 +306,7 @@ void update_and_render(EngineMemory* memory, EngineInput* app_input) {
   }
 
   // region Draw text
-  const f32 c_width  = static_cast<f32>(app_input->client_width);
+  const f32 c_width = static_cast<f32>(app_input->client_width);
   const f32 c_height = static_cast<f32>(app_input->client_height);
   if (app_input->input.oem_5.is_pressed_this_frame()) {
     state->is_cli_enabled = state->cli.toggle(c_height);
@@ -320,8 +324,8 @@ void update_and_render(EngineMemory* memory, EngineInput* app_input) {
     single_color_program.set_uniform("color", vec4(0.7f, 0.7f, 0.7f, 0.7f));
     single_color_program.set_uniform("projection", ortho_projection);
     // TODO Fix this, worst implementation ever
-    f32 x                  = state->pointer.x;
-    f32 y                  = state->pointer.y;
+    f32 x = state->pointer.x;
+    f32 y = state->pointer.y;
     f32 cursor_vertices[6] = {
       x, y,                                                         //
       x + new_x(-10.0f, -20.0f, 45.0f), y + new_y(-10, -20, 45.0f), //
