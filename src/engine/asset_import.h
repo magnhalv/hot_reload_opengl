@@ -1,6 +1,7 @@
 #pragma once
 
-#include "mesh.h"
+#include "array.h"
+#include "memory_arena.h"
+#include "model.h"
 
-void import_mesh(const char *path, Mesh* meshes);
-
+auto import_model(const char* path, MemoryArena& storage) -> Array<Model>;

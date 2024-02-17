@@ -1,3 +1,4 @@
+#include <cmath>
 #include <cstdio>
 #include <glad/gl.h>
 
@@ -8,7 +9,9 @@
 #include "asset_manager.h"
 #include "engine.h"
 #include "gl/gl.h"
+#include "logger.h"
 #include "material.h"
+#include "memory_arena.h"
 #include "options.hpp"
 #include "platform.h"
 #include "ray.h"
@@ -79,24 +82,19 @@ void update_and_render(EngineMemory* memory, EngineInput* app_input) {
     state->pointer.x = 200;
     state->pointer.y = 200;
 
-    // Load in meshes
-    const int num_meshes = 3;
-    state->meshes.init(static_cast<Mesh*>(state->permanent.allocate(sizeof(Mesh) * num_meshes)), num_meshes);
+    state->models = import_model("assets/meshes/dungeon/dungeon.fbx_Barrel/dungeon.fbx_Barrel.fbx", state->permanent);
+    state->floor.num_vertices = 4;
+    state->floor.vertices = allocate<vec3>(state->permanent, 4);
+    state->floor.vertices[0] = vec3(F32_MAX, 0, F32_MAX);
+    state->floor.vertices[1] = vec3(-F32_MAX, 0, F32_MAX);
+    state->floor.vertices[2] = vec3(-F32_MAX, 0, -F32_MAX);
+    state->floor.vertices[3] = vec3(F32_MAX, 0, -F32_MAX);
+    state->floor.transform = Transform();
 
-    import_mesh("assets/meshes/asset_Cube.fbx", &state->meshes[0]);
-    state->meshes[0].id = 1;
-    state->meshes[0].transform.position.x = 0;
-    state->meshes[0].transform.position.y = 0;
-    state->meshes[0].transform.position.z = 0;
-    import_mesh("assets/meshes/asset_Sphere.fbx", &state->meshes[1]);
-    state->meshes[1].transform.position.x = -10;
-    state->meshes[1].id = 2;
-    import_mesh("assets/meshes/asset_Suzanne.fbx", &state->meshes[2]);
-    state->meshes[2].transform.position.x = 10;
-    state->meshes[2].id = 3;
+    state->uniform_buffer_container.init(UniformBuffer::PerFrame, allocate<PerFrameData>(state->permanent), sizeof(PerFrameData));
+    state->uniform_buffer_container.init(UniformBuffer::Light, allocate<LightData>(state->permanent), sizeof(LightData));
+    state->uniform_buffer_container.init(UniformBuffer::Material, allocate<Material>(state->permanent), sizeof(Material));
 
-    state->framebuffer.init(app_input->client_width, app_input->client_height);
-    state->ms_framebuffer.init(app_input->client_width, app_input->client_height);
     // region Compile shaders
     mesh_program.initialize(R"(.\assets\shaders\mesh.vert)", R"(.\assets\shaders\phong.frag)");
     single_color_mesh_program.initialize(R"(.\assets\shaders\mesh.vert)", R"(.\assets\shaders\single_color.frag)");
@@ -106,9 +104,8 @@ void update_and_render(EngineMemory* memory, EngineInput* app_input) {
     quad_program.initialize(R"(.\assets\shaders\quad.vert)", R"(.\assets\shaders\quad.frag)");
     grid_program.initialize(R"(.\assets\shaders\grid.vert)", R"(.\assets\shaders\grid.frag)");
 
-    state->uniform_buffer_container.init(UniformBuffer::PerFrame, allocate<PerFrameData>(state->permanent), sizeof(PerFrameData));
-    state->uniform_buffer_container.init(UniformBuffer::Light, allocate<LightData>(state->permanent), sizeof(LightData));
-    state->uniform_buffer_container.init(UniformBuffer::Material, allocate<Material>(state->permanent), sizeof(Material));
+    state->framebuffer.init(app_input->client_width, app_input->client_height);
+    state->ms_framebuffer.init(app_input->client_width, app_input->client_height);
 
     assert(graphics_options != nullptr);
     read_from_file(graphics_options);
@@ -117,23 +114,25 @@ void update_and_render(EngineMemory* memory, EngineInput* app_input) {
 
     // TODO: Handle change of screen width and height
 
-    for (auto& mesh : state->meshes) {
-      mesh.vao.init();
-      mesh.vao.bind();
+    for (auto& model : state->models) {
+      for (auto& mesh : model.meshes) {
+        mesh.vao.init();
+        mesh.vao.bind();
 
-      auto data_size = static_cast<GLsizeiptr>(sizeof(vec3) * mesh.num_vertices); // NOLINT
-      assert(mesh.num_vertices == mesh.num_normals);
+        auto data_size = static_cast<GLsizeiptr>(sizeof(vec3) * mesh.num_vertices); // NOLINT
+        assert(mesh.num_vertices == mesh.num_normals);
 
-      // TODO: Should be packed into a single buffer
-      // mesh.vao.add_buffer(data_size, 3, sizeof(vec3), 0, 0);
-      mesh.vao.add_buffer(data_size);
-      mesh.vao.add_buffer_desc(0, 0, 3, 0, sizeof(vec3));
-      mesh.vao.add_buffer(data_size);
-      mesh.vao.add_buffer_desc(1, 1, 3, 0, sizeof(vec3));
-      mesh.vao.upload_buffer_desc();
+        // TODO: Should be packed into a single buffer
+        // mesh.vao.add_buffer(data_size, 3, sizeof(vec3), 0, 0);
+        mesh.vao.add_buffer(data_size);
+        mesh.vao.add_buffer_desc(0, 0, 3, 0, sizeof(vec3));
+        mesh.vao.add_buffer(data_size);
+        mesh.vao.add_buffer_desc(1, 1, 3, 0, sizeof(vec3));
+        mesh.vao.upload_buffer_desc();
 
-      mesh.vao.upload_buffer_data(0, mesh.vertices, 0, data_size);
-      mesh.vao.upload_buffer_data(1, mesh.normals, 0, data_size);
+        mesh.vao.upload_buffer_data(0, mesh.vertices, 0, data_size);
+        mesh.vao.upload_buffer_data(1, mesh.normals, 0, data_size);
+      }
     }
 
     float quad_verticies[] = {
@@ -183,19 +182,21 @@ void update_and_render(EngineMemory* memory, EngineInput* app_input) {
   Pointer* pointer = &state->pointer;
   const MouseRaw* mouse = &app_input->input.mouse_raw;
 
-  Mesh* hovered_mesh = nullptr;
-  for (auto& mesh : state->meshes) {
-    // TODO: Check which on is in front
-    vec2 intersections;
-    if (intersects(state->camera.get_position(), pointer->ray, mesh, intersections)) {
-      hovered_mesh = &mesh;
+  Model* hovered_model = nullptr;
+  for (auto& model : state->models) {
+    for (auto& mesh : model.meshes) {
+      // TODO: Check which one is in front
+      vec2 intersections;
+      if (intersects(state->camera.get_position(), pointer->ray, mesh.get_bbox(), model.transform, intersections)) {
+        hovered_model = &model;
+      }
     }
   }
 
   switch (state->pointer_mode) {
   case PointerMode::NORMAL:
     if (mouse->left.is_pressed_this_frame()) {
-      if (hovered_mesh == nullptr) {
+      if (hovered_model == nullptr) {
         state->pointer_mode = PointerMode::LOOK_AROUND;
       } else {
         state->pointer_mode = PointerMode::GRAB;
@@ -221,19 +222,17 @@ void update_and_render(EngineMemory* memory, EngineInput* app_input) {
     state->pointer.update_ray(view, inv_projection, app_input->client_width, app_input->client_height);
   }
 
-  Mesh floor;
-  floor.num_vertices = 4;
-  floor.vertices[0] = vec3(F32_MAX, 0, F32_MAX);
-  floor.vertices[1] = vec3(-F32_MAX, 0, F32_MAX);
-  floor.vertices[2] = vec3(-F32_MAX, 0, -F32_MAX);
-  floor.vertices[3] = vec3(F32_MAX, 0, -F32_MAX);
-
   vec2 floor_intersections;
-  if (intersects(state->camera.get_position(), pointer->ray, floor, floor_intersections) &&
-      state->pointer_mode == PointerMode::GRAB && hovered_mesh != nullptr) {
+  if (intersects(state->camera.get_position(), pointer->ray, state->floor.get_bbox(), state->floor.transform, floor_intersections) &&
+      state->pointer_mode == PointerMode::GRAB && hovered_model != nullptr) {
     vec3 location = (pointer->ray * floor_intersections.x) + state->camera.get_position();
+    location.x = roundf(location.x);
+    location.z = roundf(location.z);
+    hovered_model->transform.position = location;
+  }
 
-    hovered_mesh->transform.position = location;
+  if (intersects(state->camera.get_position(), pointer->ray, state->floor.get_bbox(), state->floor.transform, floor_intersections)) {
+    vec3 location = (pointer->ray * floor_intersections.x) + state->camera.get_position();
   }
 
   const Light light = {
@@ -262,46 +261,49 @@ void update_and_render(EngineMemory* memory, EngineInput* app_input) {
   mvp_ubuf->projection = projection;
   mvp_ubuf->view = view;
   auto* light_ubuf = state->uniform_buffer_container.get_location<LightData>(UniformBuffer::Light);
-  for (auto& mesh : state->meshes) {
-    if (hovered_mesh != nullptr && mesh.id == hovered_mesh->id && state->pointer_mode != PointerMode::LOOK_AROUND) {
+  for (auto& model : state->models) {
+    if (hovered_model != nullptr && model.id == hovered_model->id && state->pointer_mode != PointerMode::LOOK_AROUND) {
       continue;
     }
-
-    const mat4 m = mesh.transform.to_mat4();
+    const mat4 m = model.transform.to_mat4();
     *light_ubuf = light.to_data(inverse(m), state->camera.get_position());
     mvp_ubuf->model = m;
-
-    mesh.vao.bind();
-    state->uniform_buffer_container.upload();
-
-    gl->draw_arrays(GL_TRIANGLES, 0, mesh.num_vertices);
+    for (auto& mesh : model.meshes) {
+      mesh.vao.bind();
+      gl->draw_arrays(GL_TRIANGLES, 0, mesh.num_vertices);
+    }
   }
 
-  if (hovered_mesh != nullptr && state->pointer_mode != PointerMode::LOOK_AROUND) {
+  if (hovered_model != nullptr && state->pointer_mode != PointerMode::LOOK_AROUND) {
+    gl->use_program(0);
+    mesh_program.useProgram();
     enable_stencil_test();
 
-    const mat4 m = hovered_mesh->transform.to_mat4();
+    const mat4 m = hovered_model->transform.to_mat4();
     *light_ubuf = light.to_data(inverse(m), state->camera.get_position());
     mvp_ubuf->model = m;
-
-    hovered_mesh->vao.bind();
     state->uniform_buffer_container.upload();
-    gl->draw_arrays(GL_TRIANGLES, 0, hovered_mesh->num_vertices);
 
+    for (auto& mesh : hovered_model->meshes) {
+      mesh.vao.bind();
+      gl->draw_arrays(GL_TRIANGLES, 0, mesh.num_vertices);
+    }
+
+    // Outline
     enable_outline();
-
     single_color_mesh_program.useProgram();
-
-    hovered_mesh->vao.bind();
-    auto t = hovered_mesh->transform;
+    auto t = hovered_model->transform;
     t.scale.x = 1.1;
     t.scale.y = 1.1;
     t.scale.z = 1.1;
 
     mvp_ubuf->model = t.to_mat4();
     state->uniform_buffer_container.upload();
-    gl->draw_arrays(GL_TRIANGLES, 0, hovered_mesh->num_vertices);
+    for (auto& mesh : hovered_model->meshes) {
 
+      mesh.vao.bind();
+      gl->draw_arrays(GL_TRIANGLES, 0, mesh.num_vertices);
+    }
     disable_stencil_test();
   }
 

@@ -12,6 +12,7 @@
 #include "gl/gl_vao.h"
 #include "memory_arena.h"
 #include "mesh.h"
+#include "model.h"
 #include "options.hpp"
 
 enum class PointerMode { NORMAL = 0, LOOK_AROUND, GRAB };
@@ -44,7 +45,8 @@ struct PerFrameData {
 struct EngineState {
   Pointer pointer;
   bool is_initialized = false;
-  Array<Mesh> meshes;
+  Array<Model> models;
+  Mesh floor;
   Camera camera;
   MemoryArena transient;
   MemoryArena permanent;

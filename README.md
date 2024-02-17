@@ -4,7 +4,6 @@ An example project for how to set up OpenGl with hot reloading.
 
 ## TODO 
 
-* Grid
 * Global MemoryArena handling
 * Make shaders global
 
