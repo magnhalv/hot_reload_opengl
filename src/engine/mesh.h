@@ -7,6 +7,7 @@
 #include <math/vec3.h>
 
 #include "gl/gl_vao.h"
+#include "material.h"
 
 const i32 MESH_MAX_VERTICES = 10000;
 
@@ -29,6 +30,7 @@ struct Mesh {
   vec3* normals;
   i32 num_normals{};
   Transform transform;
+  Material material;
 
   auto get_bbox() -> BBox {
     BBox result = {};

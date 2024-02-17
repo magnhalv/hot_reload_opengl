@@ -82,7 +82,18 @@ void update_and_render(EngineMemory* memory, EngineInput* app_input) {
     state->pointer.x = 200;
     state->pointer.y = 200;
 
-    state->models = import_model("assets/meshes/dungeon/dungeon.fbx_Barrel/dungeon.fbx_Barrel.fbx", state->permanent);
+    state->models.init(state->permanent, 5);
+    state->models[0].id = 1;
+    state->models[1].id = 2;
+    state->models[2].id = 3;
+    state->models[3].id = 4;
+    state->models[4].id = 5;
+    import_model("assets/meshes/dungeon.fbx_Wall1/dungeon.fbx_Wall1.fbx", state->models[0], state->permanent);
+    import_model("assets/meshes/dungeon.fbx_Wall2/dungeon.fbx_Wall2.fbx", state->models[1], state->permanent);
+    import_model("assets/meshes/dungeon.fbx_Wall3/dungeon.fbx_Wall3.fbx", state->models[2], state->permanent);
+    import_model("assets/meshes/dungeon.fbx_Wall4/dungeon.fbx_Wall4.fbx", state->models[3], state->permanent);
+    import_model("assets/meshes/dungeon.fbx_Doorway/dungeon.fbx_Doorway.fbx", state->models[4], state->permanent);
+
     state->floor.num_vertices = 4;
     state->floor.vertices = allocate<vec3>(state->permanent, 4);
     state->floor.vertices[0] = vec3(F32_MAX, 0, F32_MAX);
@@ -170,9 +181,6 @@ void update_and_render(EngineMemory* memory, EngineInput* app_input) {
   state->permanent.check_integrity();
   asset_manager->update_if_changed();
 #endif
-
-  auto* material = state->uniform_buffer_container.get_location<Material>(UniformBuffer::Material);
-  *material = get_material("metal");
 
   const auto projection = perspective(45.0f, ratio, 0.1f, 100.0f);
   const auto ortho_projection = create_ortho(0, app_input->client_width, 0, app_input->client_height, 0.0f, 100.0f);
@@ -270,6 +278,9 @@ void update_and_render(EngineMemory* memory, EngineInput* app_input) {
     mvp_ubuf->model = m;
     for (auto& mesh : model.meshes) {
       mesh.vao.bind();
+      auto* material = state->uniform_buffer_container.get_location<Material>(UniformBuffer::Material);
+      *material = mesh.material;
+      state->uniform_buffer_container.upload();
       gl->draw_arrays(GL_TRIANGLES, 0, mesh.num_vertices);
     }
   }
@@ -286,6 +297,9 @@ void update_and_render(EngineMemory* memory, EngineInput* app_input) {
 
     for (auto& mesh : hovered_model->meshes) {
       mesh.vao.bind();
+      auto* material = state->uniform_buffer_container.get_location<Material>(UniformBuffer::Material);
+      *material = mesh.material;
+      state->uniform_buffer_container.upload();
       gl->draw_arrays(GL_TRIANGLES, 0, mesh.num_vertices);
     }
 

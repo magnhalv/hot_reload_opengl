@@ -8,6 +8,7 @@
 #include "array.h"
 #include "asset_import.h"
 #include "logger.h"
+#include "material.h"
 #include "math/transform.h"
 #include "memory_arena.h"
 #include "mesh.h"
@@ -34,7 +35,7 @@ static inline glm::mat4 convert_to_glm_format(const aiMatrix4x4& from) {
   return to;
 }
 
-auto import_model(const char* path, MemoryArena& storage) -> Array<Model> {
+auto import_model(const char* path, Model& model, MemoryArena& storage) -> void {
   const aiScene* scene = aiImportFile(path, aiProcess_Triangulate);
 
   if (scene == nullptr || !scene->HasMeshes()) {
@@ -44,21 +45,19 @@ auto import_model(const char* path, MemoryArena& storage) -> Array<Model> {
     printf("Scene loaded.\n");
   }
 
-  Array<Model> models;
-  models.init(storage, 1);
-  auto& model = models[0];
-  model.id = 0;
   model.transform = Transform();
   model.meshes.init(storage, scene->mNumMeshes);
 
   for (i32 m = 0; m < scene->mNumMeshes; m++) {
     const auto& ai_mesh = scene->mMeshes[m];
-
     auto& mesh = model.meshes[m];
     mesh.id = m;
     if (ai_mesh->mNumVertices > MESH_MAX_VERTICES) {
       log_warning("Loaded mesh with more than 5000 vertices: %s", path);
     }
+
+    auto material_name = scene->mMaterials[ai_mesh->mMaterialIndex]->GetName();
+    mesh.material = get_material(material_name.C_Str());
 
     // TODO: Store indices, not duplicates of verticies and normals
     auto total_verticies = ai_mesh->mNumFaces * 3;
@@ -85,5 +84,4 @@ auto import_model(const char* path, MemoryArena& storage) -> Array<Model> {
     mesh.transform = Transform();
   }
   aiReleaseImport(scene);
-  return models;
 }

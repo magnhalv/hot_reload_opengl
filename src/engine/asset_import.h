@@ -1,7 +1,6 @@
 #pragma once
 
-#include "array.h"
 #include "memory_arena.h"
 #include "model.h"
 
-auto import_model(const char* path, MemoryArena& storage) -> Array<Model>;
+auto import_model(const char* path, Model& model, MemoryArena& storage) -> void;
