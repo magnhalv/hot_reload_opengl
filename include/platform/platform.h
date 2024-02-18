@@ -81,6 +81,8 @@ struct GLFunctions {
   PFNGLUNIFORMMATRIX4FVPROC gl_uniform_matrix_4_fv;
   PFNGLBLENDFUNCPROC blend_func;
   PFNGLDRAWARRAYSINSTANCEDBASEINSTANCEPROC draw_arrays_instanced_base_instance;
+  PFNGLVERTEXARRAYELEMENTBUFFERPROC vertex_array_element_buffer;
+  PFNGLDRAWELEMENTSPROC draw_elements;
 };
 
 const u32 Gl_Invalid_Id = 0;

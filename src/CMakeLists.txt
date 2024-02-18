@@ -13,6 +13,8 @@ set(SOURCE_FILES
 
         engine/engine.cpp
 
+        engine/gui.cpp
+
         engine/gl/gl.cpp
         engine/gl/gl_shader.cpp
         engine/gl/gl_vao.cpp
