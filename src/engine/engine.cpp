@@ -1,4 +1,5 @@
 #include <cmath>
+#include <cstddef>
 #include <cstdio>
 #include <glad/gl.h>
 
@@ -9,6 +10,7 @@
 #include "asset_manager.h"
 #include "engine.h"
 #include "gl/gl.h"
+#include "gl_vao2.h"
 #include "gui.hpp"
 #include "logger.h"
 #include "material.h"
@@ -69,7 +71,8 @@ void update_and_render(EngineMemory* memory, EngineInput* app_input) {
   auto& quad_program = asset_manager->shader_programs[3];
   auto& font_program = asset_manager->shader_programs[4];
   auto& grid_program = asset_manager->shader_programs[5];
-  asset_manager->num_shader_programs = 5;
+  auto& imgui_program = asset_manager->shader_programs[6];
+  asset_manager->num_shader_programs = 7;
 
   // region Initialize
   [[unlikely]] if (!state->is_initialized) {
@@ -115,6 +118,7 @@ void update_and_render(EngineMemory* memory, EngineInput* app_input) {
     single_color_program.initialize(R"(.\assets\shaders\basic_2d.vert)", R"(.\assets\shaders\single_color.frag)");
     quad_program.initialize(R"(.\assets\shaders\quad.vert)", R"(.\assets\shaders\quad.frag)");
     grid_program.initialize(R"(.\assets\shaders\grid.vert)", R"(.\assets\shaders\grid.frag)");
+    imgui_program.initialize(R"(.\assets\shaders\imgui.vert)", R"(.\assets\shaders\imgui.frag)");
 
     state->framebuffer.init(app_input->client_width, app_input->client_height);
     state->ms_framebuffer.init(app_input->client_width, app_input->client_height);
@@ -360,25 +364,27 @@ void update_and_render(EngineMemory* memory, EngineInput* app_input) {
   {
     gl->disable(GL_DEPTH_TEST);
     single_color_program.useProgram();
-    im::new_frame();
-    im::button(20, 20);
+    im::new_frame(pointer->x, pointer->y, app_input->input.mouse_raw.left.ended_down);
+    im::button(GEN_GUI_ID, 20, 20, "My button");
 
-    single_color_program.useProgram();
-    single_color_program.set_uniform("color", vec4(1.0f, 0.2f, 0.2f, 0.7f));
-    single_color_program.set_uniform("projection", ortho_projection);
+    imgui_program.useProgram();
+    imgui_program.set_uniform("projection", ortho_projection);
 
     auto* render_data = im::get_render_data();
-    GLVao vao;
+    GLVao2 vao;
     vao.init();
     vao.bind();
 
     vao.set_element_buffer(sizeof(i32) * render_data->num_indices);
     vao.upload_element_buffer_data(render_data->indices, sizeof(i32) * render_data->num_indices);
 
-    vao.add_buffer(render_data->num_vertices * sizeof(vec2));
-    vao.add_buffer_desc(0, 0, 2, 0, sizeof(vec2));
+    auto total_size = render_data->num_vertices * sizeof(im::DrawVert);
+    auto stride = sizeof(im::DrawVert);
+    vao.add_buffer(0, total_size, stride);
+    vao.add_buffer_desc(0, 0, 2, offsetof(im::DrawVert, position), stride);
+    vao.add_buffer_desc(0, 1, 4, offsetof(im::DrawVert, color), stride);
     vao.upload_buffer_desc();
-    vao.upload_buffer_data(0, render_data->vertices, 0, sizeof(vec2) * render_data->num_vertices);
+    vao.upload_buffer_data(0, render_data->vertices, 0, sizeof(im::DrawVert) * render_data->num_vertices);
 
     gl->draw_elements(GL_TRIANGLES, render_data->num_indices, GL_UNSIGNED_INT, 0);
 

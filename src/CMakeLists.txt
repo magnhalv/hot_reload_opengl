@@ -27,6 +27,7 @@ set(SOURCE_FILES
         engine/renderer.cpp
         engine/text_renderer.cpp
         engine/options.cpp
+        engine/gl_vao2.cpp
         )
 
 add_library(engine_dyn SHARED ${SOURCE_FILES})

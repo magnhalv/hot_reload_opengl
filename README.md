@@ -7,6 +7,12 @@ An example project for how to set up OpenGl with hot reloading.
 * Global MemoryArena handling
 * Make shaders global
 
+### GUI
+
+* Button
+    * Add text support
+* Window
+
 ### Cli
 
 * Add separate color for input text
