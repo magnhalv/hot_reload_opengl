@@ -650,6 +650,9 @@ void win32_bind_gl_funcs(GLFunctions* gl) {
   gl->draw_arrays_instanced_base_instance = glDrawArraysInstancedBaseInstance;
   gl->vertex_array_element_buffer = glVertexArrayElementBuffer;
   gl->draw_elements = glDrawElements;
+  gl->get_tex_image = glGetTexImage;
+  gl->copy_tex_sub_image_2d = glCopyTexSubImage2D;
+  gl->tex_sub_image_2d = glTexSubImage2D;
 }
 
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR szCmdLine, int iCmdShow) {

@@ -74,6 +74,7 @@ struct GLFunctions {
   PFNGLENABLEVERTEXATTRIBARRAYPROC enable_vertex_attrib_array;
   PFNGLVERTEXATTRIBPOINTERPROC vertex_attrib_pointer;
   PFNGLBINDTEXTUREPROC bind_texture;
+  PFNGLGETTEXIMAGEPROC get_tex_image;
   PFNGLBUFFERSUBDATAPROC buffer_sub_data;
   PFNGLACTIVETEXTUREPROC active_texture;
   PFNGLGENTEXTURESPROC gen_textures;
@@ -83,6 +84,8 @@ struct GLFunctions {
   PFNGLDRAWARRAYSINSTANCEDBASEINSTANCEPROC draw_arrays_instanced_base_instance;
   PFNGLVERTEXARRAYELEMENTBUFFERPROC vertex_array_element_buffer;
   PFNGLDRAWELEMENTSPROC draw_elements;
+  PFNGLCOPYTEXSUBIMAGE2DPROC copy_tex_sub_image_2d;
+  PFNGLTEXSUBIMAGE2DPROC tex_sub_image_2d;
 };
 
 const u32 Gl_Invalid_Id = 0;
@@ -103,7 +106,7 @@ struct Platform {
 };
 
 const u64 Permanent_Memory_Block_Size = MegaBytes(10);
-const u64 Transient_Memory_Block_Size = MegaBytes(1);
+const u64 Transient_Memory_Block_Size = MegaBytes(10);
 const u64 Assets_Memory_Block_Size = MegaBytes(1);
 const u64 Total_Memory_Size = Permanent_Memory_Block_Size + Transient_Memory_Block_Size + Assets_Memory_Block_Size;
 

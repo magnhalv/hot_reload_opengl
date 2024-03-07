@@ -117,6 +117,7 @@ void update_and_render(EngineMemory* memory, EngineInput* app_input) {
     single_color_mesh_program.set_uniform("color", vec4(0.7f, 0.1f, 0.2f, 0.0f));
     single_color_program.initialize(R"(.\assets\shaders\basic_2d.vert)", R"(.\assets\shaders\single_color.frag)");
     quad_program.initialize(R"(.\assets\shaders\quad.vert)", R"(.\assets\shaders\quad.frag)");
+    font_program.initialize(R"(.\assets\shaders\font.vert)", R"(.\assets\shaders\font.frag)");
     grid_program.initialize(R"(.\assets\shaders\grid.vert)", R"(.\assets\shaders\grid.frag)");
     imgui_program.initialize(R"(.\assets\shaders\imgui.vert)", R"(.\assets\shaders\imgui.frag)");
 
@@ -175,8 +176,11 @@ void update_and_render(EngineMemory* memory, EngineInput* app_input) {
     state->camera.update_cursor(0, 0);
 
     auto cli_memory_arena = state->permanent.allocate_arena(MegaBytes(1));
-    state->cli.init(&single_color_program, &font_program, cli_memory_arena);
+    state->font = font_load("assets/fonts/ubuntu/Ubuntu-Regular.ttf", state->permanent);
+    state->text_renderer.init(&font_program);
+    state->cli.init(&single_color_program, &state->text_renderer, state->font, cli_memory_arena);
 
+    im::initialize_imgui(state->font, &state->text_renderer);
     state->is_initialized = true;
   }
 
@@ -188,7 +192,7 @@ void update_and_render(EngineMemory* memory, EngineInput* app_input) {
 #endif
 
   const auto projection = perspective(45.0f, ratio, 0.1f, 100.0f);
-  const auto ortho_projection = create_ortho(0, app_input->client_width, 0, app_input->client_height, 0.0f, 100.0f);
+  auto ortho_projection = create_ortho(0, app_input->client_width, 0, app_input->client_height, 0.0f, 100.0f);
   const auto inv_projection = inverse(projection);
   const auto view = state->camera.get_view();
 
@@ -364,7 +368,7 @@ void update_and_render(EngineMemory* memory, EngineInput* app_input) {
   {
     gl->disable(GL_DEPTH_TEST);
     single_color_program.useProgram();
-    im::new_frame(pointer->x, pointer->y, app_input->input.mouse_raw.left.ended_down);
+    im::new_frame(pointer->x, pointer->y, app_input->input.mouse_raw.left.ended_down, &ortho_projection);
     im::button(GEN_GUI_ID, 20, 20, "My button");
 
     imgui_program.useProgram();

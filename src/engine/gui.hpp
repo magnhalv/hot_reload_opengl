@@ -2,7 +2,8 @@
 
 #include "math/vec2.h"
 #include "math/vec4.h"
-#include "memory_arena.h"
+#include "text_renderer.h"
+
 // Source: https://solhsa.com/imgui/ch04.html
 // If you're going to render widgets to the same
 // UI from different source files, you can avoid
@@ -37,9 +38,9 @@ struct RenderData {
   i32 num_indices;
 };
 
-auto initialize(const char* font_path, MemoryArena* permanent);
+auto initialize_imgui(Font* font, TextRenderer* text_renderer) -> void;
 
-auto new_frame(i32 mouse_x, i32 mouse_y, bool mouse_down) -> void;
+auto new_frame(i32 mouse_x, i32 mouse_y, bool mouse_down, mat4* ortho) -> void;
 auto get_render_data() -> RenderData*;
 
 auto button(i32 id, i32 x, i32 y, const char* text) -> void;

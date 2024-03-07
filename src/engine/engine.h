@@ -14,6 +14,7 @@
 #include "mesh.h"
 #include "model.h"
 #include "options.hpp"
+#include "text_renderer.h"
 
 enum class PointerMode { NORMAL = 0, LOOK_AROUND, GRAB };
 
@@ -63,6 +64,9 @@ struct EngineState {
   Cli cli;
 
   GraphicsOptions graphics_options;
+
+  TextRenderer text_renderer;
+  Font* font;
 };
 
 extern "C" __declspec(dllexport) void update_and_render(EngineMemory* memory, EngineInput* app_input);

@@ -28,6 +28,8 @@ set(SOURCE_FILES
         engine/text_renderer.cpp
         engine/options.cpp
         engine/gl_vao2.cpp
+
+        engine/stb_image_write.cpp
         )
 
 add_library(engine_dyn SHARED ${SOURCE_FILES})

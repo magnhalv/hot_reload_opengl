@@ -6,21 +6,22 @@ namespace im {
 
 RenderData render_data;
 UIState state;
-TextRenderer text_renderer;
-MemoryArena* arena;
+TextRenderer* _text_renderer;
+Font* _font;
+mat4* _ortho;
 
-auto initialize(const char* font_path, GLShaderProgram* font_shader, MemoryArena* permanent) {
-  text_renderer.init(font_shader);
-  arena = permanent->allocate_arena(KiloBytes(1));
-  text_renderer.load_font("assets/fonts/ubuntu/Ubuntu-Regular.ttf", *arena);
+auto initialize_imgui(Font* font, TextRenderer* text_renderer) -> void {
+  _text_renderer = text_renderer;
+  _font = font;
 }
 
-auto new_frame(i32 mouse_x, i32 mouse_y, bool mouse_down) -> void {
+auto new_frame(i32 mouse_x, i32 mouse_y, bool mouse_down, mat4* ortho) -> void {
   state.mouse_x = mouse_x;
   state.mouse_y = mouse_y;
   state.mouse_down = mouse_down;
   render_data.num_vertices = 0;
   render_data.num_indices = 0;
+  _ortho = ortho;
 }
 
 auto get_render_data() -> RenderData* {
@@ -73,6 +74,7 @@ auto button(i32 id, i32 x, i32 y, const char* text) -> void {
   render_data.indices[5] = 2;
   render_data.num_indices = 6;
 
+  _text_renderer->render(text, *_font, x, y, 1.0, *_ortho);
   // text_renderer.render(text, i32 length, f32 x, f32 y, f32 scale, const mat4 &ortho_projection)
 }
 } // namespace im

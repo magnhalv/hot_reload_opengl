@@ -42,7 +42,7 @@ struct Cli {
   GLVao _vao;
   GLShaderProgram* _single_color_program;
   auto handle_input(UserInput* input) -> void;
-  auto init(GLShaderProgram* single_color, GLShaderProgram* font, MemoryArena* arena) -> void;
+  auto init(GLShaderProgram* single_color, TextRenderer* text_renderer, Font* font, MemoryArena* arena) -> void;
   auto update(f32 client_width, f32 client_height, f32 dt) -> void;
   /// Returns true if toggle enables cli
   auto toggle(f32 client_height) -> bool;
@@ -64,9 +64,9 @@ struct Cli {
   LinkedListBuffer _response_buffer;
 
   FList<CliApp> _apps;
-
   CliSizes _sizes;
-  TextRenderer _renderer;
+  TextRenderer* _text_renderer;
+  Font* _font;
 };
 
 #endif // HOT_RELOAD_OPENGL_CLI_H
