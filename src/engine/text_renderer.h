@@ -21,7 +21,7 @@ struct Font {
 };
 
 auto font_load(const char* path, MemoryArena& permanent_arena) -> Font*;
-auto font_strlen(const char* str, f32 scale, Array<Character>& characters);
+auto font_str_dim(const char* str, f32 scale, Font& font) -> vec2;
 
 struct TextRenderer {
   auto init(GLShaderProgram* program) -> void;

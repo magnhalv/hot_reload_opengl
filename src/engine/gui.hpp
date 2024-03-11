@@ -1,5 +1,6 @@
 #pragma once
 
+#include "list.h"
 #include "math/vec2.h"
 #include "math/vec4.h"
 #include "text_renderer.h"
@@ -19,6 +20,7 @@ namespace im {
 
 struct DrawVert {
   vec2 position;
+  vec2 uv;
   vec4 color;
 };
 
@@ -32,13 +34,11 @@ struct UIState {
 };
 
 struct RenderData {
-  DrawVert vertices[1024];
-  i32 num_vertices;
-  i32 indices[1024];
-  i32 num_indices;
+  FList<DrawVert> vertices;
+  FList<i32> indices;
 };
 
-auto initialize_imgui(Font* font, TextRenderer* text_renderer) -> void;
+auto initialize_imgui(Font* font, MemoryArena* permanent) -> void;
 
 auto new_frame(i32 mouse_x, i32 mouse_y, bool mouse_down, mat4* ortho) -> void;
 auto get_render_data() -> RenderData*;

@@ -180,7 +180,7 @@ void update_and_render(EngineMemory* memory, EngineInput* app_input) {
     state->text_renderer.init(&font_program);
     state->cli.init(&single_color_program, &state->text_renderer, state->font, cli_memory_arena);
 
-    im::initialize_imgui(state->font, &state->text_renderer);
+    im::initialize_imgui(state->font, &state->permanent);
     state->is_initialized = true;
   }
 
@@ -366,7 +366,10 @@ void update_and_render(EngineMemory* memory, EngineInput* app_input) {
 
   // region RenderUI
   {
+    gl->enable(GL_BLEND);
     gl->disable(GL_DEPTH_TEST);
+    gl->blend_func(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+    gl->bind_texture(GL_TEXTURE_2D, state->font->texture_atlas);
     single_color_program.useProgram();
     im::new_frame(pointer->x, pointer->y, app_input->input.mouse_raw.left.ended_down, &ortho_projection);
     im::button(GEN_GUI_ID, 20, 20, "My button");
@@ -379,20 +382,23 @@ void update_and_render(EngineMemory* memory, EngineInput* app_input) {
     vao.init();
     vao.bind();
 
-    vao.set_element_buffer(sizeof(i32) * render_data->num_indices);
-    vao.upload_element_buffer_data(render_data->indices, sizeof(i32) * render_data->num_indices);
+    vao.set_element_buffer(sizeof(i32) * render_data->indices.size());
+    vao.upload_element_buffer_data(render_data->indices.data(), sizeof(i32) * render_data->indices.size());
 
-    auto total_size = render_data->num_vertices * sizeof(im::DrawVert);
+    auto total_size = render_data->vertices.size() * sizeof(im::DrawVert);
     auto stride = sizeof(im::DrawVert);
     vao.add_buffer(0, total_size, stride);
     vao.add_buffer_desc(0, 0, 2, offsetof(im::DrawVert, position), stride);
-    vao.add_buffer_desc(0, 1, 4, offsetof(im::DrawVert, color), stride);
+    vao.add_buffer_desc(0, 1, 2, offsetof(im::DrawVert, uv), stride);
+    vao.add_buffer_desc(0, 2, 4, offsetof(im::DrawVert, color), stride);
     vao.upload_buffer_desc();
-    vao.upload_buffer_data(0, render_data->vertices, 0, sizeof(im::DrawVert) * render_data->num_vertices);
+    vao.upload_buffer_data(0, render_data->vertices.data(), 0, sizeof(im::DrawVert) * render_data->vertices.size());
 
-    gl->draw_elements(GL_TRIANGLES, render_data->num_indices, GL_UNSIGNED_INT, 0);
+    gl->draw_elements(GL_TRIANGLES, render_data->indices.size(), GL_UNSIGNED_INT, 0);
 
     vao.destroy();
+    gl->enable(GL_DEPTH_TEST);
+    gl->disable(GL_BLEND);
   }
 
   // region Draw pointer

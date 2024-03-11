@@ -9,7 +9,26 @@
 #include "memory_arena.h"
 #include "stb_image_write.h"
 
-auto font_strlen(const char* str, f32 scale, Array<Character>& characters) {
+auto font_str_dim(const char* str, f32 scale, Font& font) -> vec2 {
+  auto length = strlen(str);
+  auto& characters = font.characters;
+
+  auto x_length = 0;
+  auto y_length = 0;
+  for (auto i = 0; i < length; i++) {
+    char c = str[i];
+    if (c == '\0') {
+      continue;
+    }
+    assert(c > 0 && c < characters.size());
+    Character ch = characters[c];
+
+    y_length = fmax(ch.size.y * scale, y_length);
+
+    // now advance cursors for next glyph (note that advance is number of 1/64 pixels)
+    x_length += (ch.advance >> 6) * scale; // bitshift by 6 to get value in pixels (2^6 = 64)
+  }
+  return vec2(x_length, y_length);
 }
 
 auto write_texture_to_png(const char* file_path, u32 texture_id, i32 width, i32 height) {
@@ -61,11 +80,19 @@ auto font_load(const char* path, MemoryArena& permanent_arena) -> Font* {
   gl->tex_parameter_i(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 
   auto max_height_in_row = 0;
-  auto x = 0;
-  auto y = 0;
+  auto x = 5;
+  auto y = 5;
   const auto padding_x = 5;
   const auto padding_y = 5;
 
+  u8 data[5 * 5] = {
+    255, 255, 255, 255, 255, //
+    255, 255, 255, 255, 255, //
+    255, 255, 255, 255, 255, //
+    255, 255, 255, 255, 255, //
+    255, 255, 255, 255, 255, //
+  };
+  gl->tex_sub_image_2d(GL_TEXTURE_2D, 0, 0, 0, 5, 5, GL_RED, GL_UNSIGNED_BYTE, data);
   for (u8 c = 0; c < 128; c++) {
     if (FT_Load_Char(face, c, FT_LOAD_RENDER)) {
       crash_and_burn("FreeType: Failed to load glyph.");
@@ -98,7 +125,6 @@ auto font_load(const char* path, MemoryArena& permanent_arena) -> Font* {
 
     x += width + padding_x;
   }
-  write_texture_to_png("texture.png", font->texture_atlas, atlas_width, atlas_height);
   FT_Done_Face(face);
   FT_Done_FreeType(ft);
 
