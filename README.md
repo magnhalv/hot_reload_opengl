@@ -4,13 +4,12 @@ An example project for how to set up OpenGl with hot reloading.
 
 ## TODO 
 
+* Add performance debug info in top right window
 * Global MemoryArena handling
 * Make shaders global
 
 ### GUI
 
-* Button
-    * Add text support
 * Window
 
 ### Cli

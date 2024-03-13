@@ -10,7 +10,7 @@
 #include "asset_manager.h"
 #include "engine.h"
 #include "gl/gl.h"
-#include "gl_vao2.h"
+#include "gl/gl_vao.h"
 #include "gui.hpp"
 #include "logger.h"
 #include "material.h"
@@ -19,9 +19,10 @@
 #include "platform.h"
 #include "ray.h"
 #include "renderer.h"
+#include "text_renderer.h"
 
 // Globals
-GraphicsOptions* graphics_options = nullptr;
+Options* graphics_options = nullptr;
 
 auto Pointer::update_pos(const MouseRaw& raw, i32 client_width, i32 client_height) -> void {
   // TODO: Sensitivity must be moved somewhere else
@@ -141,9 +142,9 @@ void update_and_render(EngineMemory* memory, EngineInput* app_input) {
 
         // TODO: Should be packed into a single buffer
         // mesh.vao.add_buffer(data_size, 3, sizeof(vec3), 0, 0);
-        mesh.vao.add_buffer(data_size);
+        mesh.vao.add_buffer(0, data_size, sizeof(vec3));
         mesh.vao.add_buffer_desc(0, 0, 3, 0, sizeof(vec3));
-        mesh.vao.add_buffer(data_size);
+        mesh.vao.add_buffer(1, data_size, sizeof(vec3));
         mesh.vao.add_buffer_desc(1, 1, 3, 0, sizeof(vec3));
         mesh.vao.upload_buffer_desc();
 
@@ -167,7 +168,7 @@ void update_and_render(EngineMemory* memory, EngineInput* app_input) {
 
     state->quad_vao.init();
     state->quad_vao.bind();
-    state->quad_vao.add_buffer(sizeof(quad_verticies));
+    state->quad_vao.add_buffer(0, sizeof(quad_verticies), 4 * sizeof(f32));
     state->quad_vao.add_buffer_desc(0, 0, 2, 0, 4 * sizeof(f32));
     state->quad_vao.add_buffer_desc(0, 1, 2, 2 * sizeof(f32), 4 * sizeof(f32));
     state->quad_vao.upload_buffer_desc();
@@ -190,6 +191,19 @@ void update_and_render(EngineMemory* memory, EngineInput* app_input) {
   state->permanent.check_integrity();
   asset_manager->update_if_changed();
 #endif
+
+  auto& time = state->time;
+  time.dt_ms = app_input->dt_ms;
+  time.dt = static_cast<f32>(time.dt_ms) * 0.001;
+  time.t_ms = app_input->t_ms;
+  time.num_frames++;
+  time.second_counter += time.dt_ms;
+
+  if (time.second_counter > 1000) {
+    time.fps = time.num_frames;
+    time.num_frames = 0;
+    time.second_counter -= 1000;
+  }
 
   const auto projection = perspective(45.0f, ratio, 0.1f, 100.0f);
   auto ortho_projection = create_ortho(0, app_input->client_width, 0, app_input->client_height, 0.0f, 100.0f);
@@ -337,7 +351,7 @@ void update_and_render(EngineMemory* memory, EngineInput* app_input) {
     state->is_cli_enabled = state->cli.toggle(c_height);
   }
 
-  state->cli.update(c_width, c_height, app_input->dt);
+  state->cli.update(c_width, c_height, time.dt);
   state->cli.render_background(c_width, c_height);
   state->cli.render_text(c_width, c_height);
 
@@ -372,13 +386,19 @@ void update_and_render(EngineMemory* memory, EngineInput* app_input) {
     gl->bind_texture(GL_TEXTURE_2D, state->font->texture_atlas);
     single_color_program.useProgram();
     im::new_frame(pointer->x, pointer->y, app_input->input.mouse_raw.left.ended_down, &ortho_projection);
-    im::button(GEN_GUI_ID, 20, 20, "My button");
+    im::button(GEN_GUI_ID, 20, 20, "My super long button");
+    auto debug_color = vec4(1.0, 1.0, 0, 1.0);
+    char fps_text[50];
+    sprintf(fps_text, "FPS: %d", time.fps);
+    auto fps_text_dim = font_str_dim(fps_text, 0.3, *state->font);
+    im::text(fps_text, app_input->client_width - fps_text_dim.x - 25, app_input->client_height - fps_text_dim.y - 25,
+        debug_color, 0.3);
 
     imgui_program.useProgram();
     imgui_program.set_uniform("projection", ortho_projection);
 
     auto* render_data = im::get_render_data();
-    GLVao2 vao;
+    GLVao vao;
     vao.init();
     vao.bind();
 
@@ -417,7 +437,7 @@ void update_and_render(EngineMemory* memory, EngineInput* app_input) {
     GLVao cursor_vao{};
     cursor_vao.init();
     cursor_vao.bind();
-    cursor_vao.add_buffer(sizeof(cursor_vertices));
+    cursor_vao.add_buffer(0, sizeof(cursor_vertices), sizeof(vec2));
     cursor_vao.add_buffer_desc(0, 0, 2, 0, sizeof(vec2));
     cursor_vao.upload_buffer_desc();
     cursor_vao.upload_buffer_data(0, cursor_vertices, 0, sizeof(cursor_vertices));

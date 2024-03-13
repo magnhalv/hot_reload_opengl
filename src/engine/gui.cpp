@@ -36,7 +36,7 @@ const vec4 background_color = vec4(0.133, 0.239, 0.365, 1.0);
 const vec4 active_color = vec4(0.233, 0.339, 0.465, 1.0);
 const vec4 hot_color = vec4(0.033, 0.139, 0.265, 1.0);
 
-auto render_text(const char* text, const Font& font, f32 x, f32 y, f32 scale, const mat4& ortho_projection) -> void {
+auto render_text(const char* text, const Font& font, f32 x, f32 y, f32 scale, vec4 color, const mat4& ortho_projection) -> void {
   auto length = strlen(text);
   auto& characters = font.characters;
   for (auto i = 0; i < length; i++) {
@@ -53,7 +53,6 @@ auto render_text(const char* text, const Font& font, f32 x, f32 y, f32 scale, co
     f32 w = ch.size.x * scale;
     f32 h = ch.size.y * scale;
 
-    vec4 color = vec4(0.7, 0.7, 0.7, 1.0);
     render_data.vertices.push({ .position = vec2(x_pos, y_pos + h), .uv = vec2(ch.uv_start.x, ch.uv_start.y), .color = color }); // 1
     render_data.vertices.push({ .position = vec2(x_pos, y_pos), .uv = vec2(ch.uv_start.x, ch.uv_end.y), .color = color }); // 2
     render_data.vertices.push({ .position = vec2(x_pos + w, y_pos), .uv = vec2(ch.uv_end.x, ch.uv_end.y), .color = color }); // 3
@@ -73,6 +72,10 @@ auto render_text(const char* text, const Font& font, f32 x, f32 y, f32 scale, co
     // now advance cursors for next glyph (note that advance is number of 1/64 pixels)
     x += (ch.advance >> 6) * scale; // bitshift by 6 to get value in pixels (2^6 = 64)
   }
+}
+
+auto text(const char* text, i32 x, i32 y, vec4& color, f32 scale) -> void {
+  render_text(text, *_font, x, y, scale, color, *_ortho);
 }
 
 auto button(i32 id, i32 x, i32 y, const char* text) -> void {
@@ -122,7 +125,8 @@ auto button(i32 id, i32 x, i32 y, const char* text) -> void {
   render_data.indices.push(3);
   render_data.indices.push(2);
 
-  render_text(text, *_font, x + padding, y + padding, 0.7, *_ortho);
+  vec4 text_color = vec4(0.7, 0.7, 0.7, 1.0);
+  render_text(text, *_font, x + padding, y + padding, 0.7, text_color, *_ortho);
 
   // text_renderer.render(text, i32 length, f32 x, f32 y, f32 scale, const mat4 &ortho_projection)
 }

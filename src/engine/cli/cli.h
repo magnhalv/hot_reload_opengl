@@ -2,9 +2,11 @@
 #define HOT_RELOAD_OPENGL_CLI_H
 
 #include <platform/types.h>
+#include <platform/user_input.h>
 
 #include "../gl/gl_shader.h"
 #include "../gl/gl_vao.h"
+#include "../growable_string.h"
 #include "../linked_list_buffer.h"
 #include "../list.h"
 #include "../text_renderer.h"
@@ -60,7 +62,7 @@ struct Cli {
 
   MemoryArena* _arena;
 
-  FList<char> _command_buffer;
+  GStr _command_buffer;
   LinkedListBuffer _response_buffer;
 
   FList<CliApp> _apps;

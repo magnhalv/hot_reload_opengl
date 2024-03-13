@@ -1,5 +1,5 @@
 #include "text_renderer.h"
-#include "glad/gl.h"
+#include "gl/gl.h"
 
 #include <cstring>
 #include <ft2build.h>
@@ -125,6 +125,7 @@ auto font_load(const char* path, MemoryArena& permanent_arena) -> Font* {
 
     x += width + padding_x;
   }
+  write_texture_to_png("texture.png", font->texture_atlas, atlas_width, atlas_height);
   FT_Done_Face(face);
   FT_Done_FreeType(ft);
 
@@ -134,8 +135,9 @@ auto font_load(const char* path, MemoryArena& permanent_arena) -> Font* {
 auto TextRenderer::init(GLShaderProgram* program) -> void {
   _program = program;
   _vao.init();
-  _vao.add_buffer(sizeof(f32) * 6 * 4);
-  _vao.add_buffer_desc(0, GLBufferElementDescription{ .location = 0, .size = 4, .offset = 0, .stride = 4 * sizeof(f32) });
+  _vao.add_buffer(0, sizeof(f32) * 6 * 4, sizeof(f32) * 4);
+  _vao.add_buffer_desc(0,
+      GLBufferElementDescription{ .binding_index = 0, .size = 4, .offset_in_bytes = 0, .stride_in_bytes = 4 * sizeof(f32) });
   _vao.upload_buffer_desc();
 }
 

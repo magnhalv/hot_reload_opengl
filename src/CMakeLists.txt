@@ -27,7 +27,6 @@ set(SOURCE_FILES
         engine/renderer.cpp
         engine/text_renderer.cpp
         engine/options.cpp
-        engine/gl_vao2.cpp
 
         engine/stb_image_write.cpp
         )

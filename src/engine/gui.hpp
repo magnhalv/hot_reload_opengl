@@ -44,4 +44,5 @@ auto new_frame(i32 mouse_x, i32 mouse_y, bool mouse_down, mat4* ortho) -> void;
 auto get_render_data() -> RenderData*;
 
 auto button(i32 id, i32 x, i32 y, const char* text) -> void;
+auto text(const char* text, i32 x, i32 y, vec4& color, f32 scale) -> void;
 } // namespace im

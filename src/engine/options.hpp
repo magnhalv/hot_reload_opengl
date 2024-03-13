@@ -5,9 +5,10 @@
 #include "memory_arena.h"
 #include <cstring>
 
-struct GraphicsOptions {
+struct Options {
   bool anti_aliasing;
   bool enable_grid;
+  bool debug_info;
 };
 
 struct LineBuffer {
@@ -44,5 +45,5 @@ struct LineBuffer {
   }
 };
 
-auto save_to_file(GraphicsOptions* graphics_options) -> void;
-auto read_from_file(GraphicsOptions* graphics_options) -> void;
+auto save_to_file(Options* options) -> void;
+auto read_from_file(Options* options) -> void;

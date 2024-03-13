@@ -1,6 +1,7 @@
 #pragma once
 
 #include "cli_app.h"
+#include "../list.h"
 
 auto inline handle_echo(Array<FStr> &args, LinkedListBuffer &buf) -> void {
     if (args.size() != 1) {

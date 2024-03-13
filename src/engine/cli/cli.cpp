@@ -2,7 +2,7 @@
 #include <math/vec2.h>
 
 #include "echo.h"
-#include "graphics.h"
+#include "options.h"
 
 const size_t RawBufferSize = KiloBytes(512);
 const size_t num_start_characters = 2;
@@ -21,26 +21,28 @@ auto Cli::handle_input(UserInput* input) -> void {
       auto button = input->buttons[i];
 
       if (button.is_pressed_this_frame()) {
-        _command_buffer.push(i + 97);
+        char character[2];
+        character[0] = i + 97;
+        character[1] = '\0';
+        _command_buffer.push(character);
       }
     }
 
     if (input->space.is_pressed_this_frame()) {
-      _command_buffer.push(' ');
-    }
-
-    if (input->enter.is_pressed_this_frame()) {
-      _command_buffer.push('\0');
+      _command_buffer.push(" ");
+    } else if (input->enter.is_pressed_this_frame()) {
       FStr command = FStr::create(_command_buffer.data(), *_arena);
       execute_command(command);
-      if (_command_buffer.size() > num_start_characters) {
-        _command_buffer.pop(_command_buffer.size() - num_start_characters);
+      if (_command_buffer.len() > num_start_characters) {
+        _command_buffer.pop(_command_buffer.len() - num_start_characters);
       }
+    } else if (input->back.is_pressed_this_frame()) {
+      _command_buffer.pop();
     }
   }
 
   if (input->back.is_pressed_this_frame()) {
-    if (_command_buffer.size() > num_start_characters) {
+    if (_command_buffer.len() > num_start_characters) {
       _command_buffer.pop();
     }
   }
@@ -49,7 +51,7 @@ auto Cli::handle_input(UserInput* input) -> void {
 auto Cli::init(GLShaderProgram* single_color, TextRenderer* text_renderer, Font* font, MemoryArena* arena) -> void {
   _vao.init();
   _vao.bind();
-  _vao.add_buffer(2 * 6 * sizeof(f32));
+  _vao.add_buffer(0, 2 * 6 * sizeof(f32), 2 * sizeof(f32));
   _vao.add_buffer_desc(0, 0, 2, 0, 2 * sizeof(f32));
   _vao.upload_buffer_desc();
 
@@ -57,9 +59,7 @@ auto Cli::init(GLShaderProgram* single_color, TextRenderer* text_renderer, Font*
   _direction = -1;
 
   _arena = arena;
-  _command_buffer.init(*arena, 128);
-  _command_buffer.push('>');
-  _command_buffer.push(' ');
+  _command_buffer = GStr::create("> ", 128, *arena);
 
   _response_buffer.init(128 * 512, *arena);
 

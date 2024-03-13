@@ -8,6 +8,7 @@ add_executable(tests
         cli_echo_test.cpp
         linked_list_test.cpp
         fixed_string_test.cpp
+        growable_string_text.cpp
         line_buffer_test.cpp
         )
 

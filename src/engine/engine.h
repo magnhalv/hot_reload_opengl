@@ -35,12 +35,23 @@ struct Window {
   mat4 perspective;
 };
 
-extern GraphicsOptions* graphics_options;
+extern Options* graphics_options;
 
 struct PerFrameData {
   mat4 projection;
   mat4 view;
   mat4 model;
+};
+
+struct TimeInfo {
+  f32 dt; // in seconds
+  u64 dt_ms;
+  u64 t_ms;
+
+  // Performance stuff. Improve when needed
+  i32 num_frames;
+  u64 second_counter;
+  i32 fps;
 };
 
 struct EngineState {
@@ -63,7 +74,8 @@ struct EngineState {
   PointerMode pointer_mode;
   Cli cli;
 
-  GraphicsOptions graphics_options;
+  Options graphics_options;
+  TimeInfo time;
 
   TextRenderer text_renderer;
   Font* font;

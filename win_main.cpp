@@ -8,6 +8,7 @@
 #include <cassert>
 #include <platform/platform.h>
 #include <platform/types.h>
+#include <sysinfoapi.h>
 
 struct EngineFunctions {
   HMODULE handle = nullptr;
@@ -808,11 +809,11 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR szCmdLine,
   Recording recording = {};
   Playback playback = {};
 
-  DWORD last_tick = GetTickCount();
+  auto last_tick = GetTickCount64();
   while (is_running) {
-    DWORD this_tick = GetTickCount();
-    app_input.dt = float(this_tick - last_tick) * 0.001f; // to seconds
-    app_input.t += app_input.dt;
+    auto this_tick = GetTickCount64();
+    app_input.dt_ms = this_tick - last_tick;
+    app_input.t_ms += app_input.dt_ms;
     last_tick = this_tick;
 
     if (win32_should_reload_dll(&app_functions)) {

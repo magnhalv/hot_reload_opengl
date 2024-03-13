@@ -15,22 +15,28 @@ auto line_in_buffer(const char* line, LineBuffer& line_buffer) {
 
 const char* graphic_options_path = R"(data\file.data)";
 
-auto save_to_file(GraphicsOptions* graphics_options) -> void {
+auto save_to_file(Options* options) -> void {
   const auto max_num_lines = 20;
 
   LineBuffer buffer(20, g_transient, 1024);
   buffer.push_line("[GraphicsOptions]");
 
-  if (graphics_options->anti_aliasing) {
+  if (options->anti_aliasing) {
     buffer.push_line("antialiasing = 1");
   } else {
     buffer.push_line("antialiasing = 0");
   }
 
-  if (graphics_options->enable_grid) {
+  if (options->enable_grid) {
     buffer.push_line("enable_grid = 1");
   } else {
     buffer.push_line("enable_grid = 0");
+  }
+
+  if (options->debug_info) {
+    buffer.push_line("debug_info = 1");
+  } else {
+    buffer.push_line("debug_info = 0");
   }
 
   // TODO: Generalize this
@@ -45,7 +51,7 @@ auto save_to_file(GraphicsOptions* graphics_options) -> void {
   platform->write_file(graphic_options_path, raw_buffer, raw_buffer_size);
 }
 
-auto read_from_file(GraphicsOptions* graphics_options) -> void {
+auto read_from_file(Options* options) -> void {
   auto file_size = platform->get_file_size(graphic_options_path);
   if (file_size == 0) {
     return;
@@ -75,6 +81,7 @@ auto read_from_file(GraphicsOptions* graphics_options) -> void {
     }
   }
 
-  graphics_options->anti_aliasing = line_in_buffer("antialiasing = 1", buffer);
-  graphics_options->enable_grid = line_in_buffer("enable_grid = 1", buffer);
+  options->anti_aliasing = line_in_buffer("antialiasing = 1", buffer);
+  options->enable_grid = line_in_buffer("enable_grid = 1", buffer);
+  options->debug_info = line_in_buffer("debug_info = 1", buffer);
 }

@@ -4,8 +4,8 @@
 #include "../options.hpp"
 #include "cli_app.h"
 
-auto inline handle_graphics(Array<FStr>& args, LinkedListBuffer& buf) -> void {
-  const char* help_message = "graphics [antialias, grid] on|off";
+auto inline handle_options(Array<FStr>& args, LinkedListBuffer& buf) -> void {
+  const char* help_message = "options [antialias, grid] on|off";
   if (args.size() != 2) {
     buf.add(help_message);
     return;
@@ -35,6 +35,6 @@ auto inline handle_graphics(Array<FStr>& args, LinkedListBuffer& buf) -> void {
 }
 
 auto inline register_graphics(FList<CliApp>& apps, MemoryArena& arena) -> void {
-  CliApp echo{ .name = FStr::create("graphics", arena), .handle = &handle_graphics };
+  CliApp echo{ .name = FStr::create("options", arena), .handle = &handle_options };
   apps.push(echo);
 }
