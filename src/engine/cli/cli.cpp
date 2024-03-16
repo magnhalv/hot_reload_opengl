@@ -36,7 +36,7 @@ auto Cli::handle_input(UserInput* input) -> void {
       if (_command_buffer.len() > num_start_characters) {
         _command_buffer.pop(_command_buffer.len() - num_start_characters);
       }
-    } else if (input->back.is_pressed_this_frame()) {
+    } else if (input->back.is_pressed_this_frame() && _command_buffer.len() > 2) {
       _command_buffer.pop();
     }
   }
@@ -160,7 +160,7 @@ auto Cli::execute_command(FStr& command) -> void {
   auto split_command = split(command, ' ', *g_transient);
   for (auto app : _apps) {
     if (split_command[1] == app.name) {
-      auto command_wo_app_name = span(split_command, 2);
+      auto command_wo_app_name = split_command.size() > 2 ? span(split_command, 2) : Array<FStr>();
       app.handle(command_wo_app_name, _response_buffer);
       return;
     }

@@ -386,7 +386,9 @@ void update_and_render(EngineMemory* memory, EngineInput* app_input) {
     gl->bind_texture(GL_TEXTURE_2D, state->font->texture_atlas);
     single_color_program.useProgram();
     im::new_frame(pointer->x, pointer->y, app_input->input.mouse_raw.left.ended_down, &ortho_projection);
-    im::button(GEN_GUI_ID, 20, 20, "My super long button");
+    if (im::button(GEN_GUI_ID, 20, 20, "My super long button")) {
+      printf("I was clicked\n");
+    }
     auto debug_color = vec4(1.0, 1.0, 0, 1.0);
     char fps_text[50];
     sprintf(fps_text, "FPS: %d", time.fps);

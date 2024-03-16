@@ -12,6 +12,8 @@ Font* _font;
 mat4* _ortho;
 MemoryArena* gui_arena;
 
+const f32 ui_scale = 0.6f;
+
 auto initialize_imgui(Font* font, MemoryArena* permanent) -> void {
   _font = font;
   gui_arena = permanent->allocate_arena(MegaBytes(2));
@@ -78,12 +80,12 @@ auto text(const char* text, i32 x, i32 y, vec4& color, f32 scale) -> void {
   render_text(text, *_font, x, y, scale, color, *_ortho);
 }
 
-auto button(i32 id, i32 x, i32 y, const char* text) -> void {
+auto button(i32 id, i32 x, i32 y, const char* text) -> bool {
   i32 button_width = 150;
   i32 button_height = 50;
   const i32 padding = 15;
 
-  auto text_dim = font_str_dim(text, 0.7, *_font);
+  auto text_dim = font_str_dim(text, ui_scale, *_font);
   button_width = text_dim.x + padding * 2;
   button_height = text_dim.y + padding * 2;
 
@@ -101,7 +103,8 @@ auto button(i32 id, i32 x, i32 y, const char* text) -> void {
     state.hot_item = -1;
   }
 
-  if (!state.mouse_down && state.active_item == id) {
+  bool was_clicked = !state.mouse_down && state.active_item == id;
+  if (was_clicked) {
     state.active_item = -1;
   }
 
@@ -126,8 +129,9 @@ auto button(i32 id, i32 x, i32 y, const char* text) -> void {
   render_data.indices.push(2);
 
   vec4 text_color = vec4(0.7, 0.7, 0.7, 1.0);
-  render_text(text, *_font, x + padding, y + padding, 0.7, text_color, *_ortho);
+  render_text(text, *_font, x + padding, y + padding, ui_scale, text_color, *_ortho);
 
+  return was_clicked;
   // text_renderer.render(text, i32 length, f32 x, f32 y, f32 scale, const mat4 &ortho_projection)
 }
 } // namespace im

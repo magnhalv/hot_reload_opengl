@@ -19,7 +19,7 @@ auto save_to_file(Options* options) -> void {
   const auto max_num_lines = 20;
 
   LineBuffer buffer(20, g_transient, 1024);
-  buffer.push_line("[GraphicsOptions]");
+  buffer.push_line("[Options]");
 
   if (options->anti_aliasing) {
     buffer.push_line("antialiasing = 1");
@@ -59,7 +59,7 @@ auto read_from_file(Options* options) -> void {
   char* raw_buffer = allocate<char>(*g_transient, file_size + 1);
   auto success = platform->read_file(graphic_options_path, raw_buffer, file_size + 1);
   if (!success) {
-    log_error("GraphicsOptions: Failed to read %s.", graphic_options_path);
+    log_error("Options: Failed to read %s.", graphic_options_path);
     return;
   }
 

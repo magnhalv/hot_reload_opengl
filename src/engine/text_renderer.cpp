@@ -13,8 +13,8 @@ auto font_str_dim(const char* str, f32 scale, Font& font) -> vec2 {
   auto length = strlen(str);
   auto& characters = font.characters;
 
-  auto x_length = 0;
-  auto y_length = 0;
+  auto x_length = 0.0f;
+  auto y_length = 0.0f;
   for (auto i = 0; i < length; i++) {
     char c = str[i];
     if (c == '\0') {
@@ -125,7 +125,7 @@ auto font_load(const char* path, MemoryArena& permanent_arena) -> Font* {
 
     x += width + padding_x;
   }
-  write_texture_to_png("texture.png", font->texture_atlas, atlas_width, atlas_height);
+  // write_texture_to_png("texture.png", font->texture_atlas, atlas_width, atlas_height);
   FT_Done_Face(face);
   FT_Done_FreeType(ft);
 

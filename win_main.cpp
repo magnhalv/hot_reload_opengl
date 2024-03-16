@@ -675,8 +675,8 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR szCmdLine,
 
   int screenWidth = GetSystemMetrics(SM_CXSCREEN);
   int screenHeight = GetSystemMetrics(SM_CYSCREEN);
-  int client_width = 1280;
-  int client_height = 800;
+  int client_width = 1920;
+  int client_height = 1080;
   RECT windowRect;
   SetRect(&windowRect, (screenWidth / 2) - (client_width / 2), (screenHeight / 2) - (client_height / 2),
       (screenWidth / 2) + (client_width / 2), (screenHeight / 2) + (client_height / 2));
