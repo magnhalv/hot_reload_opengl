@@ -29,8 +29,8 @@ auto MemoryArena::allocate(u64 request_size) -> void* {
   previous_guard->next = new_guard;
   _last = new_guard;
 
-  log_info("MemoryArena: allocated %llu bytes. Capacity: %.2f %%.", request_size,
-      (static_cast<f32>(used) * 100.0f) / static_cast<f32>(size));
+  // log_info("MemoryArena: allocated %llu bytes. Capacity: %.2f %%.", request_size,
+  //   (static_cast<f32>(used) * 100.0f) / static_cast<f32>(size));
 
   return result;
 }
