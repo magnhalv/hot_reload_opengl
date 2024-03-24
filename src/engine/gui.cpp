@@ -17,6 +17,8 @@ i32 current_layer_idx = 0;
 struct Window {
   i32 id;
   vec2 position;
+  vec2 content_start;
+  vec2 content_end;
   vec2 next_draw_point;
   vec2 size;
 };
@@ -62,6 +64,7 @@ const vec4 background_color = vec4(0.133, 0.239, 0.365, 1.0);
 const vec4 active_color = vec4(0.233, 0.339, 0.465, 1.0);
 const vec4 hot_color = vec4(0.033, 0.139, 0.265, 1.0);
 
+// renders from left bottom to right top
 auto render_text(const char* text, const Font& font, f32 x, f32 y, f32 scale, vec4 color, const mat4& ortho_projection) -> void {
   auto length = strlen(text);
   auto& characters = font.characters;
@@ -105,10 +108,8 @@ auto text(const char* text, i32 x, i32 y, vec4& color, f32 scale) -> void {
   render_text(text, *_font, x, y, scale, color, *_ortho);
 }
 
-auto draw_rectangle(f32 x, f32 y, f32 width, f32 height, vec4 color) {
+auto draw_rectangle(vec2 start, vec2 end, vec4 color) {
   auto uv = vec2(0.0, 0.0);
-  vec2 start = vec2(x, y);
-  vec2 end = vec2(x + width, y + height);
   auto* current_layer = &layers[current_layer_idx];
   auto first_index = current_layer->vertices.size();
   current_layer->vertices.push({ .position = start, .uv = uv, .color = color });
@@ -125,6 +126,10 @@ auto draw_rectangle(f32 x, f32 y, f32 width, f32 height, vec4 color) {
   current_layer->indices.push(first_index + 2);
 }
 
+auto draw_rectangle(f32 x, f32 y, f32 width, f32 height, vec4 color) {
+  draw_rectangle(vec2(x, y), vec2(x + width, y - height), color);
+}
+
 auto button(i32 id, const char* text, i32 x, i32 y) -> bool {
   vec2 pos = vec2(x, y);
   if (active_window.id != 0) {
@@ -135,17 +140,13 @@ auto button(i32 id, const char* text, i32 x, i32 y) -> bool {
   const i32 margin = 15;
 
   auto text_dim = font_str_dim(text, ui_scale, *_font);
-  vec2 size = vec2(text_dim.x + padding * 2, text_dim.y + padding * 2);
+  vec2 size = vec2(text_dim.x + padding * 2, -(text_dim.y + padding * 2));
   vec2 start = pos;
   vec2 end = pos + size;
 
-  printf("State mouse: %d %d \n", state.mouse_x, state.mouse_y);
   auto color = background_color;
-  if (state.mouse_x >= start.x && state.mouse_x < end.x && state.mouse_y >= start.y && state.mouse_y < end.y) {
+  if (state.mouse_x >= start.x && state.mouse_x < end.x && state.mouse_y >= end.y && state.mouse_y < start.y) {
     state.hot_item = id;
-    printf("Hot item: %d\n", state.hot_item);
-    printf("Start: %f %f \n", start.x, start.y);
-    printf("End: %f %f \n", end.x, end.y);
 
     if (state.mouse_down) {
       state.active_item = id;
@@ -165,12 +166,14 @@ auto button(i32 id, const char* text, i32 x, i32 y) -> bool {
     color = hot_color;
   }
 
-  draw_rectangle(start.x, start.y, size.x, size.y, color);
+  draw_rectangle(start, end, color);
 
-  active_window.next_draw_point.y += size.y + margin;
+  active_window.next_draw_point.y += (size.y - margin);
+  active_window.content_end.x = fmax(end.x, active_window.content_end.x);
+  active_window.content_end.y = fmin(end.y, active_window.content_end.y);
 
   vec4 text_color = vec4(0.7, 0.7, 0.7, 1.0);
-  render_text(text, *_font, start.x + padding, start.y + padding, ui_scale, text_color, *_ortho);
+  render_text(text, *_font, start.x + padding, start.y - padding - text_dim.y, ui_scale, text_color, *_ortho);
 
   return was_clicked;
   // text_renderer.render(text, i32 length, f32 x, f32 y, f32 scale, const mat4 &ortho_projection)
@@ -182,7 +185,9 @@ auto window_begin(i32 id, const char* title, i32 x, i32 y) -> void {
   active_window.id = id;
   active_window.position.x = x;
   active_window.position.y = y;
-  active_window.next_draw_point = vec2(x + padding_x, y + padding_y);
+  active_window.content_start = vec2(x + padding_x, y - padding_y);
+  active_window.next_draw_point = active_window.content_start;
+  active_window.content_end = active_window.content_start;
 
   auto new_layer = layers.push();
   new_layer->vertices.init(*gui_transient, 1024);
@@ -192,8 +197,14 @@ auto window_begin(i32 id, const char* title, i32 x, i32 y) -> void {
 }
 
 auto window_end() -> void {
+  const i32 padding_x = 15;
+  const i32 padding_y = 15;
   assert(current_layer_idx > 0);
   current_layer_idx--;
+  active_window.content_end.x += padding_x;
+  active_window.content_end.y -= padding_y;
+  draw_rectangle(active_window.position, active_window.content_end, vec4(0.1, 0.1, 0.1, 0.8));
+
   active_window.id = 0;
 }
 } // namespace im

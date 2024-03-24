@@ -388,12 +388,12 @@ void update_and_render(EngineMemory* memory, EngineInput* app_input) {
 
     im::new_frame(pointer->x, pointer->y, app_input->input.mouse_raw.left.ended_down, &ortho_projection);
 
-    im::window_begin(1, "My window", 200, 200);
-    if (im::button(GEN_GUI_ID, "Gate")) {
+    im::window_begin(1, "My window", app_input->client_width - 200, app_input->client_height - 100);
+    if (im::button(GEN_GUI_ID, "First")) {
       printf("Gate clicked\n");
     }
 
-    if (im::button(GEN_GUI_ID, "Wall")) {
+    if (im::button(GEN_GUI_ID, "Seconds")) {
       printf("Wall clicked\n");
     }
     im::window_end();
