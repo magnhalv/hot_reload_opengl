@@ -440,7 +440,7 @@ void update_and_render(EngineMemory* memory, EngineInput* app_input) {
     single_color_program.useProgram();
     single_color_program.set_uniform("color", vec4(0.7f, 0.7f, 0.7f, 0.7f));
     single_color_program.set_uniform("projection", ortho_projection);
-    // TODO Fix this, worst implementation ever
+    // TODO Fix this, worst implementation ever. Move it to GUI library
     f32 x = state->pointer.x;
     f32 y = state->pointer.y;
     f32 cursor_vertices[6] = {

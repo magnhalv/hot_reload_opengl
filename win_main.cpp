@@ -657,6 +657,7 @@ void win32_bind_gl_funcs(GLFunctions* gl) {
 }
 
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR szCmdLine, int iCmdShow) {
+  printf("lolda\n");
   /* CREATE WINDOW */
   WNDCLASSEX wndclass;
   wndclass.cbSize = sizeof(WNDCLASSEX);
