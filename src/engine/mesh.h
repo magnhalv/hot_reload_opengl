@@ -6,6 +6,7 @@
 #include <math/transform.h>
 #include <math/vec3.h>
 
+#include "array.h"
 #include "gl/gl_vao.h"
 #include "material.h"
 
@@ -29,9 +30,9 @@ struct Mesh {
   i32 num_vertices{};
   vec3* normals;
   i32 num_normals{};
-  Transform transform;
   Material material;
 
+  // TODO: Compute and store this
   auto get_bbox() -> BBox {
     BBox result = {};
     result.min_x = vertices[0].x;
@@ -55,4 +56,15 @@ struct Mesh {
     }
     return result;
   }
+};
+
+struct Instance {
+  i32 id;
+  i32 model_id;
+  Transform transform;
+};
+
+struct Model {
+  i32 id;
+  Array<Mesh> meshes;
 };

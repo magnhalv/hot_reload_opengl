@@ -56,7 +56,7 @@ template <typename T> struct FList {
     _data[_size++] = *value;
   }
 
-  auto inline push(T value) -> void {
+  auto inline push(T&& value) -> void {
     assert(_size < _max_size);
     _data[_size++] = value;
   }

@@ -9,7 +9,6 @@
 #include "asset_import.h"
 #include "logger.h"
 #include "material.h"
-#include "math/transform.h"
 #include "memory_arena.h"
 #include "mesh.h"
 
@@ -23,13 +22,12 @@ auto import_model(const char* path, Model& model, MemoryArena& storage) -> void 
     printf("Mesh loaded.\n");
   }
 
-  model.transform = Transform();
   model.meshes.init(storage, scene->mNumMeshes);
 
   for (i32 m = 0; m < scene->mNumMeshes; m++) {
     const auto& ai_mesh = scene->mMeshes[m];
     auto& mesh = model.meshes[m];
-    mesh.id = m;
+    mesh.id = m + 1;
     if (ai_mesh->mNumVertices > MESH_MAX_VERTICES) {
       log_warning("Loaded mesh with more than 5000 vertices: %s", path);
     }
@@ -59,7 +57,6 @@ auto import_model(const char* path, Model& model, MemoryArena& storage) -> void 
     }
     ASSERT_EQ(mesh.num_normals, total_verticies);
     ASSERT_EQ(mesh.num_vertices, total_verticies);
-    mesh.transform = Transform();
   }
   aiReleaseImport(scene);
 }

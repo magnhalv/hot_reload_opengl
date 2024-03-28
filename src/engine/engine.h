@@ -10,9 +10,9 @@
 #include "framebuffer.h"
 #include "gl/gl_shader.h"
 #include "gl/gl_vao.h"
+#include "list.h"
 #include "memory_arena.h"
 #include "mesh.h"
-#include "model.h"
 #include "options.hpp"
 #include "text_renderer.h"
 
@@ -58,6 +58,7 @@ struct EngineState {
   Pointer pointer;
   bool is_initialized = false;
   Array<Model> models;
+  FList<Instance> instances;
   Mesh floor;
   Camera camera;
   MemoryArena transient;

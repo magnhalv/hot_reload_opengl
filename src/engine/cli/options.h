@@ -35,6 +35,5 @@ auto inline handle_options(Array<FStr>& args, LinkedListBuffer& buf) -> void {
 }
 
 auto inline register_graphics(FList<CliApp>& apps, MemoryArena& arena) -> void {
-  CliApp echo{ .name = FStr::create("options", arena), .handle = &handle_options };
-  apps.push(echo);
+  apps.push({ .name = FStr::create("options", arena), .handle = &handle_options });
 }

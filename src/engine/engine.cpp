@@ -14,6 +14,7 @@
 #include "gui.hpp"
 #include "logger.h"
 #include "material.h"
+#include "math/transform.h"
 #include "memory_arena.h"
 #include "options.hpp"
 #include "platform.h"
@@ -62,6 +63,17 @@ inline f32 new_y(f32 x, f32 y, f32 degree) {
   return sin(degree) * x + cos(degree) * y;
 }
 
+auto model_by_id(i32 id, EngineState& state) -> Model* {
+  for (auto& model : state.models) {
+    if (model.id == id) {
+      return &model;
+    }
+  }
+  // TODO: We can return a "null model" instead
+  assert(false);
+  return nullptr;
+}
+
 void update_and_render(EngineMemory* memory, EngineInput* app_input) {
   auto* state = (EngineState*)memory->permanent;
   const f32 ratio = static_cast<f32>(app_input->client_width) / static_cast<f32>(app_input->client_height);
@@ -98,6 +110,7 @@ void update_and_render(EngineMemory* memory, EngineInput* app_input) {
     import_model("assets/meshes/dungeon.fbx_Wall3/dungeon.fbx_Wall3.fbx", state->models[2], state->permanent);
     import_model("assets/meshes/dungeon.fbx_Wall4/dungeon.fbx_Wall4.fbx", state->models[3], state->permanent);
     import_model("assets/meshes/dungeon.fbx_Doorway/dungeon.fbx_Doorway.fbx", state->models[4], state->permanent);
+    state->instances.init(state->permanent, 50);
 
     state->floor.num_vertices = 4;
     state->floor.vertices = allocate<vec3>(state->permanent, 4);
@@ -105,7 +118,6 @@ void update_and_render(EngineMemory* memory, EngineInput* app_input) {
     state->floor.vertices[1] = vec3(-F32_MAX, 0, F32_MAX);
     state->floor.vertices[2] = vec3(-F32_MAX, 0, -F32_MAX);
     state->floor.vertices[3] = vec3(F32_MAX, 0, -F32_MAX);
-    state->floor.transform = Transform();
 
     state->uniform_buffer_container.init(UniformBuffer::PerFrame, allocate<PerFrameData>(state->permanent), sizeof(PerFrameData));
     state->uniform_buffer_container.init(UniformBuffer::Light, allocate<LightData>(state->permanent), sizeof(LightData));
@@ -213,13 +225,14 @@ void update_and_render(EngineMemory* memory, EngineInput* app_input) {
   Pointer* pointer = &state->pointer;
   const MouseRaw* mouse = &app_input->input.mouse_raw;
 
-  Model* hovered_model = nullptr;
-  for (auto& model : state->models) {
-    for (auto& mesh : model.meshes) {
+  Instance* hovered_instance = nullptr;
+  for (auto& instance : state->instances) {
+    Model* model = model_by_id(instance.model_id, *state);
+    for (auto& mesh : model->meshes) {
       // TODO: Check which one is in front
       vec2 intersections;
-      if (intersects(state->camera.get_position(), pointer->ray, mesh.get_bbox(), model.transform, intersections)) {
-        hovered_model = &model;
+      if (intersects(state->camera.get_position(), pointer->ray, mesh.get_bbox(), instance.transform, intersections)) {
+        hovered_instance = &instance;
       }
     }
   }
@@ -227,7 +240,7 @@ void update_and_render(EngineMemory* memory, EngineInput* app_input) {
   switch (state->pointer_mode) {
   case PointerMode::NORMAL:
     if (mouse->left.is_pressed_this_frame()) {
-      if (hovered_model == nullptr) {
+      if (hovered_instance == nullptr) {
         state->pointer_mode = PointerMode::LOOK_AROUND;
       } else {
         state->pointer_mode = PointerMode::GRAB;
@@ -254,15 +267,16 @@ void update_and_render(EngineMemory* memory, EngineInput* app_input) {
   }
 
   vec2 floor_intersections;
-  if (intersects(state->camera.get_position(), pointer->ray, state->floor.get_bbox(), state->floor.transform, floor_intersections) &&
-      state->pointer_mode == PointerMode::GRAB && hovered_model != nullptr) {
+  auto floor_transform = Transform();
+  if (intersects(state->camera.get_position(), pointer->ray, state->floor.get_bbox(), floor_transform, floor_intersections) &&
+      state->pointer_mode == PointerMode::GRAB && hovered_instance != nullptr) {
     vec3 location = (pointer->ray * floor_intersections.x) + state->camera.get_position();
     location.x = roundf(location.x);
     location.z = roundf(location.z);
-    hovered_model->transform.position = location;
+    hovered_instance->transform.position = location;
   }
 
-  if (intersects(state->camera.get_position(), pointer->ray, state->floor.get_bbox(), state->floor.transform, floor_intersections)) {
+  if (intersects(state->camera.get_position(), pointer->ray, state->floor.get_bbox(), floor_transform, floor_intersections)) {
     vec3 location = (pointer->ray * floor_intersections.x) + state->camera.get_position();
   }
 
@@ -292,14 +306,15 @@ void update_and_render(EngineMemory* memory, EngineInput* app_input) {
   mvp_ubuf->projection = projection;
   mvp_ubuf->view = view;
   auto* light_ubuf = state->uniform_buffer_container.get_location<LightData>(UniformBuffer::Light);
-  for (auto& model : state->models) {
-    if (hovered_model != nullptr && model.id == hovered_model->id && state->pointer_mode != PointerMode::LOOK_AROUND) {
+  for (auto& instance : state->instances) {
+    if (hovered_instance != nullptr && instance.id == hovered_instance->id && state->pointer_mode != PointerMode::LOOK_AROUND) {
       continue;
     }
-    const mat4 m = model.transform.to_mat4();
+    Model* model = model_by_id(instance.model_id, *state);
+    const mat4 m = instance.transform.to_mat4();
     *light_ubuf = light.to_data(inverse(m), state->camera.get_position());
     mvp_ubuf->model = m;
-    for (auto& mesh : model.meshes) {
+    for (auto& mesh : model->meshes) {
       mesh.vao.bind();
       auto* material = state->uniform_buffer_container.get_location<Material>(UniformBuffer::Material);
       *material = mesh.material;
@@ -308,17 +323,18 @@ void update_and_render(EngineMemory* memory, EngineInput* app_input) {
     }
   }
 
-  if (hovered_model != nullptr && state->pointer_mode != PointerMode::LOOK_AROUND) {
+  if (hovered_instance != nullptr && state->pointer_mode != PointerMode::LOOK_AROUND) {
     gl->use_program(0);
     mesh_program.useProgram();
     enable_stencil_test();
 
-    const mat4 m = hovered_model->transform.to_mat4();
+    const mat4 m = hovered_instance->transform.to_mat4();
     *light_ubuf = light.to_data(inverse(m), state->camera.get_position());
     mvp_ubuf->model = m;
     state->uniform_buffer_container.upload();
 
-    for (auto& mesh : hovered_model->meshes) {
+    Model* model = model_by_id(hovered_instance->model_id, *state);
+    for (auto& mesh : model->meshes) {
       mesh.vao.bind();
       auto* material = state->uniform_buffer_container.get_location<Material>(UniformBuffer::Material);
       *material = mesh.material;
@@ -329,14 +345,14 @@ void update_and_render(EngineMemory* memory, EngineInput* app_input) {
     // Outline
     enable_outline();
     single_color_mesh_program.useProgram();
-    auto t = hovered_model->transform;
+    auto t = hovered_instance->transform;
     t.scale.x = 1.1;
     t.scale.y = 1.1;
     t.scale.z = 1.1;
 
     mvp_ubuf->model = t.to_mat4();
     state->uniform_buffer_container.upload();
-    for (auto& mesh : hovered_model->meshes) {
+    for (auto& mesh : model->meshes) {
 
       mesh.vao.bind();
       gl->draw_arrays(GL_TRIANGLES, 0, mesh.num_vertices);
@@ -390,20 +406,21 @@ void update_and_render(EngineMemory* memory, EngineInput* app_input) {
 
     im::window_begin(1, "My window", 10, app_input->client_height - 10);
     auto button_width = 150;
+    const i32 next_id = state->instances.size() + 1;
     if (im::button(GEN_GUI_ID, "Gate", button_width)) {
-      printf("Gate clicked\n");
+      state->instances.push(Instance{ .id = next_id, .model_id = 5, .transform = Transform() });
     }
     if (im::button(GEN_GUI_ID, "Wall 1", button_width)) {
-      printf("Wall clicked\n");
+      state->instances.push(Instance{ .id = next_id, .model_id = 1, .transform = Transform() });
     }
     if (im::button(GEN_GUI_ID, "Wall 2", button_width)) {
-      printf("Wall clicked\n");
+      state->instances.push(Instance{ .id = next_id, .model_id = 2, .transform = Transform() });
     }
     if (im::button(GEN_GUI_ID, "Wall 3", button_width)) {
-      printf("Wall clicked\n");
+      state->instances.push(Instance{ .id = next_id, .model_id = 3, .transform = Transform() });
     }
     if (im::button(GEN_GUI_ID, "Wall 4", button_width)) {
-      printf("Wall clicked\n");
+      state->instances.push(Instance{ .id = next_id, .model_id = 4, .transform = Transform() });
     }
     im::window_end();
 
