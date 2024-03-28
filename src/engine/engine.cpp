@@ -388,12 +388,21 @@ void update_and_render(EngineMemory* memory, EngineInput* app_input) {
 
     im::new_frame(pointer->x, pointer->y, app_input->input.mouse_raw.left.ended_down, &ortho_projection);
 
-    im::window_begin(1, "My window", app_input->client_width - 200, app_input->client_height - 100);
-    if (im::button(GEN_GUI_ID, "First")) {
+    im::window_begin(1, "My window", 10, app_input->client_height - 10);
+    auto button_width = 150;
+    if (im::button(GEN_GUI_ID, "Gate", button_width)) {
       printf("Gate clicked\n");
     }
-
-    if (im::button(GEN_GUI_ID, "Seconds")) {
+    if (im::button(GEN_GUI_ID, "Wall 1", button_width)) {
+      printf("Wall clicked\n");
+    }
+    if (im::button(GEN_GUI_ID, "Wall 2", button_width)) {
+      printf("Wall clicked\n");
+    }
+    if (im::button(GEN_GUI_ID, "Wall 3", button_width)) {
+      printf("Wall clicked\n");
+    }
+    if (im::button(GEN_GUI_ID, "Wall 4", button_width)) {
       printf("Wall clicked\n");
     }
     im::window_end();

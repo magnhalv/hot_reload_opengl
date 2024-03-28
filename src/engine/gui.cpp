@@ -130,17 +130,29 @@ auto draw_rectangle(f32 x, f32 y, f32 width, f32 height, vec4 color) {
   draw_rectangle(vec2(x, y), vec2(x + width, y - height), color);
 }
 
-auto button(i32 id, const char* text, i32 x, i32 y) -> bool {
-  vec2 pos = vec2(x, y);
-  if (active_window.id != 0) {
-    pos = active_window.next_draw_point;
-  }
+auto button(i32 id, const char* text, i32 width, i32 height) -> bool {
+  assert(active_window.id != 0);
+  vec2 pos = active_window.next_draw_point;
 
-  const i32 padding = 15;
+  i32 padding_x = 15;
+  i32 padding_y = 15;
   const i32 margin = 15;
 
   auto text_dim = font_str_dim(text, ui_scale, *_font);
-  vec2 size = vec2(text_dim.x + padding * 2, -(text_dim.y + padding * 2));
+  auto size = vec2(width, height);
+  auto min_width = text_dim.x + padding_x * 2;
+  auto min_height = text_dim.y + padding_y * 2;
+  if (width < min_width) {
+    size.x = min_width;
+  } else {
+    padding_x = (width - text_dim.x) / 2;
+  }
+
+  if (height < min_height) {
+    size.y = -min_height;
+  } else {
+    padding_y = (height - text_dim.y) / 2;
+  }
   vec2 start = pos;
   vec2 end = pos + size;
 
@@ -173,7 +185,7 @@ auto button(i32 id, const char* text, i32 x, i32 y) -> bool {
   active_window.content_end.y = fmin(end.y, active_window.content_end.y);
 
   vec4 text_color = vec4(0.7, 0.7, 0.7, 1.0);
-  render_text(text, *_font, start.x + padding, start.y - padding - text_dim.y, ui_scale, text_color, *_ortho);
+  render_text(text, *_font, start.x + padding_x, start.y - padding_y - text_dim.y, ui_scale, text_color, *_ortho);
 
   return was_clicked;
   // text_renderer.render(text, i32 length, f32 x, f32 y, f32 scale, const mat4 &ortho_projection)

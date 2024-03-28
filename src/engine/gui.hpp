@@ -44,7 +44,7 @@ auto new_frame(i32 mouse_x, i32 mouse_y, bool mouse_down, mat4* ortho) -> void;
 auto end_frame() -> void;
 auto get_render_layers() -> FList<RenderLayer>;
 
-auto button(i32 id, const char* text, i32 x = 0, i32 y = 0) -> bool;
+auto button(i32 id, const char* text, i32 width = 0, i32 height = 0) -> bool;
 auto window_begin(i32 id, const char* title, i32 x, i32 y) -> void;
 auto window_end() -> void;
 auto text(const char* text, i32 x, i32 y, vec4& color, f32 scale) -> void;

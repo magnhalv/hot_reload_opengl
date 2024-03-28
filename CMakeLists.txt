@@ -30,7 +30,8 @@ add_subdirectory(src)
 add_subdirectory(tests)
 
 # compile_commands.json
-set(CMAKE_EXPORT_COMPILE_COMMANDS ON CACHE INTERNAL "")
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+set(CMAKE_EXPORT_COMPILE_COMMANDS_OUTPUT_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}" ON)
 
 if(EXISTS "${CMAKE_CURRENT_BINARY_DIR}/compile_commands.json")
     add_custom_command(

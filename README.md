@@ -7,16 +7,21 @@ This project is built using cmake. Recommended is using ninja and git bash. Exam
 
 ```
 cmd.exe /c "\"C:\\Program Files (x86)\\Microsoft Visual Studio\\2022\\BuildTools\\VC\\Auxiliary\\Build\\vcvars64.bat\" && bash"
-cmake -S . -B cmake-build -G "Ninja"
-cmake --build cmake-build
-cmake --build cmake-build --target <hot_reload_opengl|engine_dyn|tests>
+cmake -S . -B build -G "Ninja"
+cmake --build build
+cmake --build build --target <hot_reload_opengl|engine_dyn|tests>
 ```
 
 An example project for how to set up OpenGl with hot reloading.
 
 ## TODO 
 
-* Add performance debug info in top right window
+* Select assets to "build":
+    * Click on button
+    * See tranparent asset under your cursor
+    * Left mouse to place
+    * Click "r" to rotate 90 degrees
+
 * Global MemoryArena handling
 * Make shaders global
 

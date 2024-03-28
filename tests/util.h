@@ -3,6 +3,7 @@
 #include "doctest.h"
 #include "logger.h"
 #include <cstring>
+#include <memory>
 #include <memory_arena.h>
 
 #include <csetjmp>

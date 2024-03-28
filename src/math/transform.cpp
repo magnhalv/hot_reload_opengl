@@ -1,3 +1,4 @@
+#include <math.h>
 #include <math/transform.h>
 
 Transform combine(const Transform& a, const Transform& b) {
