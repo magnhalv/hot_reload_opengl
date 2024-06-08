@@ -1,5 +1,6 @@
 .idea
 cmake-build-debug-visual-studio
+cmake-build
 deps/src
 deps/archives
 deps/src

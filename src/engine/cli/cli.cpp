@@ -16,6 +16,10 @@ auto cubic_bezier(vec2 p0, vec2 p1, vec2 p2, vec2 p3, f32 t) -> vec2 {
 }
 
 auto Cli::handle_input(UserInput* input) -> void {
+  if (m_active != -1) {
+    return;
+  }
+
   if (!_command_buffer.is_full()) {
     for (u8 i = 0; i < 26; i++) {
       auto button = input->buttons[i];
@@ -56,7 +60,7 @@ auto Cli::init(GLShaderProgram* single_color, TextRenderer* text_renderer, Font*
   _vao.upload_buffer_desc();
 
   _single_color_program = single_color;
-  _direction = -1;
+  m_active = -1;
 
   _arena = arena;
   _command_buffer = GStr::create("> ", 128, *arena);
@@ -76,8 +80,8 @@ auto Cli::init(GLShaderProgram* single_color, TextRenderer* text_renderer, Font*
 auto Cli::toggle(f32 client_height) -> bool {
   _target_y = client_height / 2;
 
-  _direction = -_direction;
-  return _direction == 1;
+  m_active = -m_active;
+  return m_active == 1;
 }
 
 auto Cli::update(f32 client_width, f32 client_height, f32 dt) -> void {
@@ -86,7 +90,7 @@ auto Cli::update(f32 client_width, f32 client_height, f32 dt) -> void {
 #endif
 
   auto delta_progress = dt / Duration;
-  _progress += delta_progress * _direction;
+  _progress += delta_progress * m_active;
 
   if (_progress > 1.0) {
     _progress = 1.0;

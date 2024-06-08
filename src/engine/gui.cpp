@@ -1,11 +1,12 @@
 #include "gui.hpp"
+#include "math/vec2.h"
 #include "memory_arena.h"
 #include "platform/types.h"
 #include "text_renderer.h"
 
 namespace im {
 
-UIState state;
+UIState m_state;
 Font* _font;
 mat4* _ortho;
 MemoryArena* gui_permanent;
@@ -16,11 +17,11 @@ i32 current_layer_idx = 0;
 
 struct Window {
   i32 id;
-  vec2 position;
-  vec2 content_start;
-  vec2 content_end;
-  vec2 next_draw_point;
-  vec2 size;
+  ivec2 position;
+  ivec2 content_start;
+  ivec2 content_end;
+  ivec2 next_draw_point;
+  ivec2 size;
 };
 
 Window active_window;
@@ -34,12 +35,12 @@ auto initialize_imgui(Font* font, MemoryArena* permanent) -> void {
 
   layers.init(*gui_permanent, 5);
   current_layer_idx = 0;
+  m_state.hot_item = None_Hot_Items_id;
 }
 
 auto new_frame(i32 mouse_x, i32 mouse_y, bool mouse_down, mat4* ortho) -> void {
-  state.mouse_x = mouse_x;
-  state.mouse_y = mouse_y;
-  state.mouse_down = mouse_down;
+  m_state.mouse_pos = ivec2(mouse_x, mouse_y);
+  m_state.mouse_down = mouse_down;
 
   layers.empty();
   current_layer_idx = 0;
@@ -56,6 +57,9 @@ auto new_frame(i32 mouse_x, i32 mouse_y, bool mouse_down, mat4* ortho) -> void {
 auto end_frame() -> void {
 }
 
+auto get_state() -> UIState {
+  return m_state;
+}
 auto get_render_layers() -> FList<RenderLayer> {
   return layers;
 }
@@ -108,7 +112,9 @@ auto text(const char* text, i32 x, i32 y, vec4& color, f32 scale) -> void {
   render_text(text, *_font, x, y, scale, color, *_ortho);
 }
 
-auto draw_rectangle(vec2 start, vec2 end, vec4 color) {
+auto draw_rectangle(ivec2 start_in, ivec2 end_in, vec4 color) {
+  vec2 start = ivec2_to_vec2(start_in);
+  vec2 end = ivec2_to_vec2(end_in);
   auto uv = vec2(0.0, 0.0);
   auto* current_layer = &layers[current_layer_idx];
   auto first_index = current_layer->vertices.size();
@@ -126,12 +132,16 @@ auto draw_rectangle(vec2 start, vec2 end, vec4 color) {
   current_layer->indices.push(first_index + 2);
 }
 
-auto draw_rectangle(f32 x, f32 y, f32 width, f32 height, vec4 color) {
-  draw_rectangle(vec2(x, y), vec2(x + width, y - height), color);
+auto draw_rectangle(i32 x, i32 y, i32 width, i32 height, vec4 color) {
+  draw_rectangle(ivec2(x, y), ivec2(x + width, y - height), color);
+}
+
+auto is_in_rect(ivec2 pos, ivec2 start, ivec2 end) {
+  return pos.x >= start.x && pos.x < end.x && pos.y >= end.y && pos.y < start.y;
 }
 
 auto button(i32 id, const char* text, i32 x, i32 y) -> bool {
-  vec2 pos = vec2(x, y);
+  ivec2 pos = ivec2(x, y);
   if (active_window.id != 0) {
     pos = active_window.next_draw_point;
   }
@@ -140,29 +150,29 @@ auto button(i32 id, const char* text, i32 x, i32 y) -> bool {
   const i32 margin = 15;
 
   auto text_dim = font_str_dim(text, ui_scale, *_font);
-  vec2 size = vec2(text_dim.x + padding * 2, -(text_dim.y + padding * 2));
-  vec2 start = pos;
-  vec2 end = pos + size;
+  ivec2 size = ivec2(text_dim.x + padding * 2, -(text_dim.y + padding * 2));
+  ivec2 start = pos;
+  ivec2 end = pos + size;
 
   auto color = background_color;
-  if (state.mouse_x >= start.x && state.mouse_x < end.x && state.mouse_y >= end.y && state.mouse_y < start.y) {
-    state.hot_item = id;
+  if (is_in_rect(m_state.mouse_pos, start, end)) {
+    m_state.hot_item = id;
 
-    if (state.mouse_down) {
-      state.active_item = id;
+    if (m_state.mouse_down) {
+      m_state.active_item = id;
     }
-  } else if (state.hot_item == id) {
-    state.hot_item = -1;
+  } else if (m_state.hot_item == id) {
+    m_state.hot_item = None_Hot_Items_id;
   }
 
-  bool was_clicked = !state.mouse_down && state.active_item == id;
+  bool was_clicked = !m_state.mouse_down && m_state.active_item == id;
   if (was_clicked) {
-    state.active_item = -1;
+    m_state.active_item = None_Hot_Items_id;
   }
 
-  if (state.active_item == id) {
+  if (m_state.active_item == id) {
     color = active_color;
-  } else if (state.hot_item == id) {
+  } else if (m_state.hot_item == id) {
     color = hot_color;
   }
 
@@ -185,7 +195,7 @@ auto window_begin(i32 id, const char* title, i32 x, i32 y) -> void {
   active_window.id = id;
   active_window.position.x = x;
   active_window.position.y = y;
-  active_window.content_start = vec2(x + padding_x, y - padding_y);
+  active_window.content_start = ivec2(x + padding_x, y - padding_y);
   active_window.next_draw_point = active_window.content_start;
   active_window.content_end = active_window.content_start;
 
@@ -205,6 +215,9 @@ auto window_end() -> void {
   active_window.content_end.y -= padding_y;
   draw_rectangle(active_window.position, active_window.content_end, vec4(0.1, 0.1, 0.1, 0.8));
 
+  if (m_state.hot_item == None_Hot_Items_id && is_in_rect(m_state.mouse_pos, active_window.content_start, active_window.content_end)) {
+    m_state.hot_item = active_window.id;
+  }
   active_window.id = 0;
 }
 } // namespace im

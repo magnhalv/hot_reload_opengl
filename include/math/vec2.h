@@ -22,6 +22,10 @@ template <typename T> struct TVec2 {
 typedef TVec2<f32> vec2;
 typedef TVec2<i32> ivec2;
 
+inline auto ivec2_to_vec2(ivec2 iv) -> vec2 {
+  return vec2(static_cast<f32>(iv.x), static_cast<f32>(iv.y));
+}
+
 template <typename T> inline TVec2<T> operator+(const TVec2<T>& l, const TVec2<T>& r) {
   return { l.x + r.x, l.y + r.y };
 }

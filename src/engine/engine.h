@@ -54,6 +54,8 @@ struct TimeInfo {
   i32 fps;
 };
 
+enum class InputMode { Game = 0, Gui };
+
 struct EngineState {
   Pointer pointer;
   bool is_initialized = false;
@@ -68,11 +70,12 @@ struct EngineState {
   MultiSampleFramebuffer ms_framebuffer;
   GLVao quad_vao{};
 
-  bool is_cli_enabled;
+  InputMode input_mode;
 
   // Gameplay
   PointerMode pointer_mode;
   Cli cli;
+  bool is_cli_active;
 
   Options graphics_options;
   TimeInfo time;

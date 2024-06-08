@@ -18,6 +18,8 @@
 
 namespace im {
 
+const i32 None_Hot_Items_id = -1;
+
 struct DrawVert {
   vec2 position;
   vec2 uv;
@@ -25,8 +27,7 @@ struct DrawVert {
 };
 
 struct UIState {
-  i32 mouse_x;
-  i32 mouse_y;
+  ivec2 mouse_pos;
   bool mouse_down;
 
   i32 hot_item;
@@ -42,6 +43,7 @@ auto initialize_imgui(Font* font, MemoryArena* permanent) -> void;
 
 auto new_frame(i32 mouse_x, i32 mouse_y, bool mouse_down, mat4* ortho) -> void;
 auto end_frame() -> void;
+auto get_state() -> UIState;
 auto get_render_layers() -> FList<RenderLayer>;
 
 auto button(i32 id, const char* text, i32 x = 0, i32 y = 0) -> bool;

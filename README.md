@@ -10,6 +10,7 @@ cmd.exe /c "\"C:\\Program Files (x86)\\Microsoft Visual Studio\\2022\\BuildTools
 cmake -S . -B cmake-build -G "Ninja"
 cmake --build cmake-build
 cmake --build cmake-build --target <hot_reload_opengl|engine_dyn|tests>
+cmake --build cmake-build && ./cmake-build/hot_reload_opengl.exe
 ```
 
 An example project for how to set up OpenGl with hot reloading.

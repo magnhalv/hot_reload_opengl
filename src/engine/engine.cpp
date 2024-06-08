@@ -62,6 +62,7 @@ inline f32 new_y(f32 x, f32 y, f32 degree) {
   return sin(degree) * x + cos(degree) * y;
 }
 
+// TODO: Handle change of screen width and height
 void update_and_render(EngineMemory* memory, EngineInput* app_input) {
   auto* state = (EngineState*)memory->permanent;
   const f32 ratio = static_cast<f32>(app_input->client_width) / static_cast<f32>(app_input->client_height);
@@ -86,6 +87,7 @@ void update_and_render(EngineMemory* memory, EngineInput* app_input) {
 
     state->pointer.x = 200;
     state->pointer.y = 200;
+    state->input_mode = InputMode::Game;
 
     state->models.init(state->permanent, 5);
     state->models[0].id = 1;
@@ -129,8 +131,6 @@ void update_and_render(EngineMemory* memory, EngineInput* app_input) {
     read_from_file(graphics_options);
 
     // endregion
-
-    // TODO: Handle change of screen width and height
 
     for (auto& model : state->models) {
       for (auto& mesh : model.meshes) {
@@ -209,61 +209,104 @@ void update_and_render(EngineMemory* memory, EngineInput* app_input) {
   auto ortho_projection = create_ortho(0, app_input->client_width, 0, app_input->client_height, 0.0f, 100.0f);
   const auto inv_projection = inverse(projection);
   const auto view = state->camera.get_view();
+  const f32 c_width = static_cast<f32>(app_input->client_width);
+  const f32 c_height = static_cast<f32>(app_input->client_height);
 
   Pointer* pointer = &state->pointer;
   const MouseRaw* mouse = &app_input->input.mouse_raw;
 
-  Model* hovered_model = nullptr;
-  for (auto& model : state->models) {
-    for (auto& mesh : model.meshes) {
-      // TODO: Check which one is in front
-      vec2 intersections;
-      if (intersects(state->camera.get_position(), pointer->ray, mesh.get_bbox(), model.transform, intersections)) {
-        hovered_model = &model;
-      }
+  // Update CLI
+  {
+    // TODO: Need to rewrite CLI to use imgui
+    if (app_input->input.oem_5.is_pressed_this_frame()) {
+      state->is_cli_active = state->cli.toggle(c_height);
     }
-  }
-
-  switch (state->pointer_mode) {
-  case PointerMode::NORMAL:
-    if (mouse->left.is_pressed_this_frame()) {
-      if (hovered_model == nullptr) {
-        state->pointer_mode = PointerMode::LOOK_AROUND;
-      } else {
-        state->pointer_mode = PointerMode::GRAB;
-      }
-    }
-    break;
-  case PointerMode::LOOK_AROUND:
-  case PointerMode::GRAB: {
-    if (mouse->left.is_released_this_frame()) {
-      state->pointer_mode = PointerMode::NORMAL;
-    }
-  } break;
-  }
-
-  if (state->is_cli_enabled) {
     state->cli.handle_input(&app_input->input);
+    state->cli.update(c_width, c_height, time.dt);
+  }
+
+  // Update GUI
+  if (state->pointer_mode == PointerMode::NORMAL) {
+    im::new_frame(pointer->x, pointer->y, app_input->input.mouse_raw.left.ended_down, &ortho_projection);
   } else {
-    if (state->pointer_mode == PointerMode::NORMAL || state->pointer_mode == PointerMode::GRAB) {
-      state->pointer.update_pos(*mouse, app_input->client_width, app_input->client_height);
+    im::new_frame(-1, -1, app_input->input.mouse_raw.left.ended_down, &ortho_projection);
+  }
+
+  {
+    im::window_begin(1, "My window", app_input->client_width - 200, app_input->client_height - 100);
+    if (im::button(GEN_GUI_ID, "Gate")) {
+      printf("Gate clicked\n");
+    }
+
+    if (im::button(GEN_GUI_ID, "Wall")) {
+      printf("Wall clicked\n");
+    }
+    im::window_end();
+
+    auto debug_color = vec4(1.0, 1.0, 0, 1.0);
+    char fps_text[50];
+    sprintf(fps_text, "FPS: %d", time.fps);
+    auto fps_text_dim = font_str_dim(fps_text, 0.3, *state->font);
+    im::text(fps_text, app_input->client_width - fps_text_dim.x - 25, app_input->client_height - fps_text_dim.y - 25,
+        debug_color, 0.3);
+
+    if (im::get_state().hot_item != im::None_Hot_Items_id) {
+      state->input_mode = InputMode::Gui;
+      state->pointer_mode = PointerMode::NORMAL;
     } else {
-      state->camera.update_cursor(static_cast<f32>(mouse->dx), static_cast<f32>(mouse->dy));
+      state->input_mode = InputMode::Game;
+    }
+  }
+
+  if (state->pointer_mode == PointerMode::NORMAL || state->pointer_mode == PointerMode::GRAB) {
+    state->pointer.update_pos(*mouse, app_input->client_width, app_input->client_height);
+  } else {
+    state->camera.update_cursor(static_cast<f32>(mouse->dx), static_cast<f32>(mouse->dy));
+  }
+  // Update Game
+  Model* hovered_model = nullptr;
+  if (state->input_mode == InputMode::Game) {
+    for (auto& model : state->models) {
+      for (auto& mesh : model.meshes) {
+        // TODO: Check which one is in front
+        vec2 intersections;
+        if (intersects(state->camera.get_position(), pointer->ray, mesh.get_bbox(), model.transform, intersections)) {
+          hovered_model = &model;
+        }
+      }
     }
     state->pointer.update_ray(view, inv_projection, app_input->client_width, app_input->client_height);
-  }
 
-  vec2 floor_intersections;
-  if (intersects(state->camera.get_position(), pointer->ray, state->floor.get_bbox(), state->floor.transform, floor_intersections) &&
-      state->pointer_mode == PointerMode::GRAB && hovered_model != nullptr) {
-    vec3 location = (pointer->ray * floor_intersections.x) + state->camera.get_position();
-    location.x = roundf(location.x);
-    location.z = roundf(location.z);
-    hovered_model->transform.position = location;
-  }
+    switch (state->pointer_mode) {
+    case PointerMode::NORMAL:
+      if (mouse->left.is_pressed_this_frame()) {
+        if (hovered_model == nullptr) {
+          state->pointer_mode = PointerMode::LOOK_AROUND;
+        } else {
+          state->pointer_mode = PointerMode::GRAB;
+        }
+      }
+      break;
+    case PointerMode::LOOK_AROUND:
+    case PointerMode::GRAB: {
+      if (mouse->left.is_released_this_frame()) {
+        state->pointer_mode = PointerMode::NORMAL;
+      }
+    } break;
+    }
 
-  if (intersects(state->camera.get_position(), pointer->ray, state->floor.get_bbox(), state->floor.transform, floor_intersections)) {
-    vec3 location = (pointer->ray * floor_intersections.x) + state->camera.get_position();
+    vec2 floor_intersections;
+    if (intersects(state->camera.get_position(), pointer->ray, state->floor.get_bbox(), state->floor.transform, floor_intersections) &&
+        state->pointer_mode == PointerMode::GRAB && hovered_model != nullptr) {
+      vec3 location = (pointer->ray * floor_intersections.x) + state->camera.get_position();
+      location.x = roundf(location.x);
+      location.z = roundf(location.z);
+      hovered_model->transform.position = location;
+    }
+
+    if (intersects(state->camera.get_position(), pointer->ray, state->floor.get_bbox(), state->floor.transform, floor_intersections)) {
+      vec3 location = (pointer->ray * floor_intersections.x) + state->camera.get_position();
+    }
   }
 
   const Light light = {
@@ -344,16 +387,10 @@ void update_and_render(EngineMemory* memory, EngineInput* app_input) {
     disable_stencil_test();
   }
 
-  // region Draw text
-  const f32 c_width = static_cast<f32>(app_input->client_width);
-  const f32 c_height = static_cast<f32>(app_input->client_height);
-  if (app_input->input.oem_5.is_pressed_this_frame()) {
-    state->is_cli_enabled = state->cli.toggle(c_height);
+  {
+    state->cli.render_background(c_width, c_height);
+    state->cli.render_text(c_width, c_height);
   }
-
-  state->cli.update(c_width, c_height, time.dt);
-  state->cli.render_background(c_width, c_height);
-  state->cli.render_text(c_width, c_height);
 
   // endregion
 
@@ -385,25 +422,6 @@ void update_and_render(EngineMemory* memory, EngineInput* app_input) {
     gl->blend_func(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
     gl->bind_texture(GL_TEXTURE_2D, state->font->texture_atlas);
     single_color_program.useProgram();
-
-    im::new_frame(pointer->x, pointer->y, app_input->input.mouse_raw.left.ended_down, &ortho_projection);
-
-    im::window_begin(1, "My window", app_input->client_width - 200, app_input->client_height - 100);
-    if (im::button(GEN_GUI_ID, "First")) {
-      printf("Gate clicked\n");
-    }
-
-    if (im::button(GEN_GUI_ID, "Seconds")) {
-      printf("Wall clicked\n");
-    }
-    im::window_end();
-
-    auto debug_color = vec4(1.0, 1.0, 0, 1.0);
-    char fps_text[50];
-    sprintf(fps_text, "FPS: %d", time.fps);
-    auto fps_text_dim = font_str_dim(fps_text, 0.3, *state->font);
-    im::text(fps_text, app_input->client_width - fps_text_dim.x - 25, app_input->client_height - fps_text_dim.y - 25,
-        debug_color, 0.3);
 
     imgui_program.useProgram();
     imgui_program.set_uniform("projection", ortho_projection);

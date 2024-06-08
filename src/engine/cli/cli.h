@@ -56,7 +56,7 @@ struct Cli {
   f32 t;
   f32 _current_y;
   f32 _progress;
-  f32 _direction;
+  f32 m_active;
   f32 _target_y;
   f32 _current_height;
 
