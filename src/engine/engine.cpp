@@ -14,6 +14,7 @@
 #include "gui.hpp"
 #include "logger.h"
 #include "material.h"
+#include "math/quat.h"
 #include "math/transform.h"
 #include "memory_arena.h"
 #include "options.hpp"
@@ -232,7 +233,7 @@ void update_and_render(EngineMemory* memory, EngineInput* app_input) {
   if (state->pointer_mode == PointerMode::NORMAL) {
     im::new_frame(pointer->x, pointer->y, app_input->input.mouse_raw.left.ended_down, &ortho_projection);
   } else {
-    im::new_frame(-1, -1, app_input->input.mouse_raw.left.ended_down, &ortho_projection);
+    im::new_frame(-1, -1, false, &ortho_projection);
   }
 
   {
@@ -294,14 +295,16 @@ void update_and_render(EngineMemory* memory, EngineInput* app_input) {
     state->camera.update_cursor(static_cast<f32>(mouse->dx), static_cast<f32>(mouse->dy));
   }
   // Update Game
-  Entity* hovered_entity = nullptr;
   if (state->input_mode == InputMode::Game) {
-    for (auto& entity : state->entities) {
-      for (auto& mesh : entity.model->meshes) {
-        // TODO: Check which one is in front
-        vec2 intersections;
-        if (intersects(state->camera.get_position(), pointer->ray, mesh.get_bbox(), entity.transform, intersections)) {
-          hovered_entity = &entity;
+    if (state->pointer_mode != PointerMode::GRAB) {
+      state->hot_entity = nullptr;
+      for (auto& entity : state->entities) {
+        for (auto& mesh : entity.model->meshes) {
+          // TODO: Check which one is in front
+          vec2 intersections;
+          if (intersects(state->camera.get_position(), pointer->ray, mesh.get_bbox(), entity.transform, intersections)) {
+            state->hot_entity = &entity;
+          }
         }
       }
     }
@@ -310,7 +313,7 @@ void update_and_render(EngineMemory* memory, EngineInput* app_input) {
     switch (state->pointer_mode) {
     case PointerMode::NORMAL:
       if (mouse->left.is_pressed_this_frame()) {
-        if (hovered_entity == nullptr) {
+        if (state->hot_entity == nullptr) {
           state->pointer_mode = PointerMode::LOOK_AROUND;
         } else {
           state->pointer_mode = PointerMode::GRAB;
@@ -327,15 +330,21 @@ void update_and_render(EngineMemory* memory, EngineInput* app_input) {
 
     vec2 floor_intersections;
     if (intersects(state->camera.get_position(), pointer->ray, state->floor.get_bbox(), state->floor.transform, floor_intersections) &&
-        state->pointer_mode == PointerMode::GRAB && hovered_entity != nullptr) {
+        state->pointer_mode == PointerMode::GRAB && state->hot_entity != nullptr) {
       vec3 location = (pointer->ray * floor_intersections.x) + state->camera.get_position();
-      location.x = roundf(location.x);
-      location.z = roundf(location.z);
-      hovered_entity->transform.position = location;
+      location.x = roundf(location.x * 10.0) / 10.0;
+      location.z = roundf(location.z * 10.0) / 10.0;
+      state->hot_entity->transform.position = location;
     }
 
     if (intersects(state->camera.get_position(), pointer->ray, state->floor.get_bbox(), state->floor.transform, floor_intersections)) {
       vec3 location = (pointer->ray * floor_intersections.x) + state->camera.get_position();
+    }
+
+    if (app_input->input.r.is_pressed_this_frame() && state->pointer_mode == PointerMode::GRAB) {
+      auto t = state->hot_entity->transform;
+      auto new_angle = getAngle(t.rotation) + PI / 2;
+      state->hot_entity->transform.rotation = angle_axis(new_angle, vec3(0, 1, 0));
     }
   }
 
@@ -366,7 +375,7 @@ void update_and_render(EngineMemory* memory, EngineInput* app_input) {
   mvp_ubuf->view = view;
   auto* light_ubuf = state->uniform_buffer_container.get_location<LightData>(UniformBuffer::Light);
   for (auto& entity : state->entities) {
-    if (hovered_entity != nullptr && entity.id == hovered_entity->id && state->pointer_mode != PointerMode::LOOK_AROUND) {
+    if (state->hot_entity != nullptr && entity.id == state->hot_entity->id && state->pointer_mode != PointerMode::LOOK_AROUND) {
       continue;
     }
     const mat4 m = entity.transform.to_mat4();
@@ -381,17 +390,17 @@ void update_and_render(EngineMemory* memory, EngineInput* app_input) {
     }
   }
 
-  if (hovered_entity != nullptr && state->pointer_mode != PointerMode::LOOK_AROUND) {
+  if (state->hot_entity != nullptr && state->pointer_mode != PointerMode::LOOK_AROUND) {
     gl->use_program(0);
     mesh_program.useProgram();
     enable_stencil_test();
 
-    const mat4 m = hovered_entity->transform.to_mat4();
+    const mat4 m = state->hot_entity->transform.to_mat4();
     *light_ubuf = light.to_data(inverse(m), state->camera.get_position());
     mvp_ubuf->model = m;
     state->uniform_buffer_container.upload();
 
-    for (auto& mesh : hovered_entity->model->meshes) {
+    for (auto& mesh : state->hot_entity->model->meshes) {
       mesh.vao.bind();
       auto* material = state->uniform_buffer_container.get_location<Material>(UniformBuffer::Material);
       *material = mesh.material;
@@ -402,14 +411,14 @@ void update_and_render(EngineMemory* memory, EngineInput* app_input) {
     // Outline
     enable_outline();
     single_color_mesh_program.useProgram();
-    auto t = hovered_entity->transform;
+    auto t = state->hot_entity->transform;
     t.scale.x = 1.1;
     t.scale.y = 1.1;
     t.scale.z = 1.1;
 
     mvp_ubuf->model = t.to_mat4();
     state->uniform_buffer_container.upload();
-    for (auto& mesh : hovered_entity->model->meshes) {
+    for (auto& mesh : state->hot_entity->model->meshes) {
 
       mesh.vao.bind();
       gl->draw_arrays(GL_TRIANGLES, 0, mesh.num_vertices);

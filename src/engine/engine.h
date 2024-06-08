@@ -66,7 +66,6 @@ struct EngineState {
   Pointer pointer;
   bool is_initialized = false;
   Array<Model> models;
-  List<Entity> entities;
   Mesh floor;
   Camera camera;
   MemoryArena transient;
@@ -89,6 +88,9 @@ struct EngineState {
 
   TextRenderer text_renderer;
   Font* font;
+
+  List<Entity> entities;
+  Entity* hot_entity;
 };
 
 extern "C" __declspec(dllexport) void update_and_render(EngineMemory* memory, EngineInput* app_input);
