@@ -12,7 +12,7 @@ mat4* _ortho;
 MemoryArena* gui_permanent;
 MemoryArena* gui_transient;
 
-FList<RenderLayer> layers;
+List<RenderLayer> layers;
 i32 current_layer_idx = 0;
 
 struct Window {
@@ -60,7 +60,7 @@ auto end_frame() -> void {
 auto get_state() -> UIState {
   return m_state;
 }
-auto get_render_layers() -> FList<RenderLayer> {
+auto get_render_layers() -> List<RenderLayer> {
   return layers;
 }
 

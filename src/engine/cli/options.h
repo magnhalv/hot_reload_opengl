@@ -34,7 +34,7 @@ auto inline handle_options(Array<FStr>& args, LinkedListBuffer& buf) -> void {
   save_to_file(graphics_options);
 }
 
-auto inline register_graphics(FList<CliApp>& apps, MemoryArena& arena) -> void {
+auto inline register_graphics(List<CliApp>& apps, MemoryArena& arena) -> void {
   CliApp echo{ .name = FStr::create("options", arena), .handle = &handle_options };
   apps.push(echo);
 }

@@ -12,7 +12,7 @@ struct Options {
 };
 
 struct LineBuffer {
-  FList<FStr> _lines;
+  List<FStr> _lines;
   MemoryArena* _arena;
 
   LineBuffer(i32 num_lines, MemoryArena* arena, size_t buffer_size) {

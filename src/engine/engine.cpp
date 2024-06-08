@@ -14,6 +14,7 @@
 #include "gui.hpp"
 #include "logger.h"
 #include "material.h"
+#include "math/transform.h"
 #include "memory_arena.h"
 #include "options.hpp"
 #include "platform.h"
@@ -127,6 +128,8 @@ void update_and_render(EngineMemory* memory, EngineInput* app_input) {
     state->framebuffer.init(app_input->client_width, app_input->client_height);
     state->ms_framebuffer.init(app_input->client_width, app_input->client_height);
 
+    state->entities.init(state->permanent, 100);
+
     assert(graphics_options != nullptr);
     read_from_file(graphics_options);
 
@@ -235,11 +238,38 @@ void update_and_render(EngineMemory* memory, EngineInput* app_input) {
   {
     im::window_begin(1, "My window", app_input->client_width - 200, app_input->client_height - 100);
     if (im::button(GEN_GUI_ID, "Gate")) {
-      printf("Gate clicked\n");
+      auto* last_entity = state->entities.last();
+      auto new_id = last_entity ? last_entity->id + 1 : 1;
+      auto entity = Entity{ .id = new_id, .model = &state->models[4], .transform = Transform() };
+      state->entities.push(entity);
     }
 
-    if (im::button(GEN_GUI_ID, "Wall")) {
-      printf("Wall clicked\n");
+    if (im::button(GEN_GUI_ID, "Wall 1")) {
+      auto* last_entity = state->entities.last();
+      auto new_id = last_entity ? last_entity->id + 1 : 1;
+      auto entity = Entity{ .id = new_id, .model = &state->models[0], .transform = Transform() };
+      state->entities.push(entity);
+    }
+
+    if (im::button(GEN_GUI_ID, "Wall 2")) {
+      auto* last_entity = state->entities.last();
+      auto new_id = last_entity ? last_entity->id + 1 : 1;
+      auto entity = Entity{ .id = new_id, .model = &state->models[1], .transform = Transform() };
+      state->entities.push(entity);
+    }
+
+    if (im::button(GEN_GUI_ID, "Wall 3")) {
+      auto* last_entity = state->entities.last();
+      auto new_id = last_entity ? last_entity->id + 1 : 1;
+      auto entity = Entity{ .id = new_id, .model = &state->models[2], .transform = Transform() };
+      state->entities.push(entity);
+    }
+
+    if (im::button(GEN_GUI_ID, "Wall 4")) {
+      auto* last_entity = state->entities.last();
+      auto new_id = last_entity ? last_entity->id + 1 : 1;
+      auto entity = Entity{ .id = new_id, .model = &state->models[3], .transform = Transform() };
+      state->entities.push(entity);
     }
     im::window_end();
 
@@ -264,14 +294,14 @@ void update_and_render(EngineMemory* memory, EngineInput* app_input) {
     state->camera.update_cursor(static_cast<f32>(mouse->dx), static_cast<f32>(mouse->dy));
   }
   // Update Game
-  Model* hovered_model = nullptr;
+  Entity* hovered_entity = nullptr;
   if (state->input_mode == InputMode::Game) {
-    for (auto& model : state->models) {
-      for (auto& mesh : model.meshes) {
+    for (auto& entity : state->entities) {
+      for (auto& mesh : entity.model->meshes) {
         // TODO: Check which one is in front
         vec2 intersections;
-        if (intersects(state->camera.get_position(), pointer->ray, mesh.get_bbox(), model.transform, intersections)) {
-          hovered_model = &model;
+        if (intersects(state->camera.get_position(), pointer->ray, mesh.get_bbox(), entity.transform, intersections)) {
+          hovered_entity = &entity;
         }
       }
     }
@@ -280,7 +310,7 @@ void update_and_render(EngineMemory* memory, EngineInput* app_input) {
     switch (state->pointer_mode) {
     case PointerMode::NORMAL:
       if (mouse->left.is_pressed_this_frame()) {
-        if (hovered_model == nullptr) {
+        if (hovered_entity == nullptr) {
           state->pointer_mode = PointerMode::LOOK_AROUND;
         } else {
           state->pointer_mode = PointerMode::GRAB;
@@ -297,11 +327,11 @@ void update_and_render(EngineMemory* memory, EngineInput* app_input) {
 
     vec2 floor_intersections;
     if (intersects(state->camera.get_position(), pointer->ray, state->floor.get_bbox(), state->floor.transform, floor_intersections) &&
-        state->pointer_mode == PointerMode::GRAB && hovered_model != nullptr) {
+        state->pointer_mode == PointerMode::GRAB && hovered_entity != nullptr) {
       vec3 location = (pointer->ray * floor_intersections.x) + state->camera.get_position();
       location.x = roundf(location.x);
       location.z = roundf(location.z);
-      hovered_model->transform.position = location;
+      hovered_entity->transform.position = location;
     }
 
     if (intersects(state->camera.get_position(), pointer->ray, state->floor.get_bbox(), state->floor.transform, floor_intersections)) {
@@ -315,34 +345,34 @@ void update_and_render(EngineMemory* memory, EngineInput* app_input) {
     .color = vec3(1.0, 1.0, 1.0),
   };
 
-  // region Render setup
+  //////////////////////////////////
+  ///////       Render       ///////
+  //////////////////////////////////
+
   if (graphics_options->anti_aliasing) {
     gl->bind_framebuffer(GL_FRAMEBUFFER, state->ms_framebuffer.fbo);
   } else {
     gl->bind_framebuffer(GL_FRAMEBUFFER, state->framebuffer.fbo);
   }
-
+  // region Render setup
   gl->enable(GL_DEPTH_TEST);
   gl->clear_color(0.1f, 0.1f, 0.1f, 0.2f);
   gl->clear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
   gl->viewport(0, 0, app_input->client_width, app_input->client_height);
-  // endregion
-
-  // region Render
 
   mesh_program.useProgram();
   auto* mvp_ubuf = state->uniform_buffer_container.get_location<PerFrameData>(UniformBuffer::PerFrame);
   mvp_ubuf->projection = projection;
   mvp_ubuf->view = view;
   auto* light_ubuf = state->uniform_buffer_container.get_location<LightData>(UniformBuffer::Light);
-  for (auto& model : state->models) {
-    if (hovered_model != nullptr && model.id == hovered_model->id && state->pointer_mode != PointerMode::LOOK_AROUND) {
+  for (auto& entity : state->entities) {
+    if (hovered_entity != nullptr && entity.id == hovered_entity->id && state->pointer_mode != PointerMode::LOOK_AROUND) {
       continue;
     }
-    const mat4 m = model.transform.to_mat4();
+    const mat4 m = entity.transform.to_mat4();
     *light_ubuf = light.to_data(inverse(m), state->camera.get_position());
     mvp_ubuf->model = m;
-    for (auto& mesh : model.meshes) {
+    for (auto& mesh : entity.model->meshes) {
       mesh.vao.bind();
       auto* material = state->uniform_buffer_container.get_location<Material>(UniformBuffer::Material);
       *material = mesh.material;
@@ -351,17 +381,17 @@ void update_and_render(EngineMemory* memory, EngineInput* app_input) {
     }
   }
 
-  if (hovered_model != nullptr && state->pointer_mode != PointerMode::LOOK_AROUND) {
+  if (hovered_entity != nullptr && state->pointer_mode != PointerMode::LOOK_AROUND) {
     gl->use_program(0);
     mesh_program.useProgram();
     enable_stencil_test();
 
-    const mat4 m = hovered_model->transform.to_mat4();
+    const mat4 m = hovered_entity->transform.to_mat4();
     *light_ubuf = light.to_data(inverse(m), state->camera.get_position());
     mvp_ubuf->model = m;
     state->uniform_buffer_container.upload();
 
-    for (auto& mesh : hovered_model->meshes) {
+    for (auto& mesh : hovered_entity->model->meshes) {
       mesh.vao.bind();
       auto* material = state->uniform_buffer_container.get_location<Material>(UniformBuffer::Material);
       *material = mesh.material;
@@ -372,14 +402,14 @@ void update_and_render(EngineMemory* memory, EngineInput* app_input) {
     // Outline
     enable_outline();
     single_color_mesh_program.useProgram();
-    auto t = hovered_model->transform;
+    auto t = hovered_entity->transform;
     t.scale.x = 1.1;
     t.scale.y = 1.1;
     t.scale.z = 1.1;
 
     mvp_ubuf->model = t.to_mat4();
     state->uniform_buffer_container.upload();
-    for (auto& mesh : hovered_model->meshes) {
+    for (auto& mesh : hovered_entity->model->meshes) {
 
       mesh.vao.bind();
       gl->draw_arrays(GL_TRIANGLES, 0, mesh.num_vertices);

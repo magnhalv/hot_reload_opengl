@@ -35,8 +35,8 @@ struct UIState {
 };
 
 struct RenderLayer {
-  FList<DrawVert> vertices;
-  FList<i32> indices;
+  List<DrawVert> vertices;
+  List<i32> indices;
 };
 
 auto initialize_imgui(Font* font, MemoryArena* permanent) -> void;
@@ -44,7 +44,7 @@ auto initialize_imgui(Font* font, MemoryArena* permanent) -> void;
 auto new_frame(i32 mouse_x, i32 mouse_y, bool mouse_down, mat4* ortho) -> void;
 auto end_frame() -> void;
 auto get_state() -> UIState;
-auto get_render_layers() -> FList<RenderLayer>;
+auto get_render_layers() -> List<RenderLayer>;
 
 auto button(i32 id, const char* text, i32 x = 0, i32 y = 0) -> bool;
 auto window_begin(i32 id, const char* title, i32 x, i32 y) -> void;

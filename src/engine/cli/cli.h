@@ -65,7 +65,7 @@ struct Cli {
   GStr _command_buffer;
   LinkedListBuffer _response_buffer;
 
-  FList<CliApp> _apps;
+  List<CliApp> _apps;
   CliSizes _sizes;
   TextRenderer* _text_renderer;
   Font* _font;

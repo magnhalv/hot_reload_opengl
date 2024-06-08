@@ -56,10 +56,17 @@ struct TimeInfo {
 
 enum class InputMode { Game = 0, Gui };
 
+struct Entity {
+  int id;
+  Model* model;
+  Transform transform;
+};
+
 struct EngineState {
   Pointer pointer;
   bool is_initialized = false;
   Array<Model> models;
+  List<Entity> entities;
   Mesh floor;
   Camera camera;
   MemoryArena transient;
