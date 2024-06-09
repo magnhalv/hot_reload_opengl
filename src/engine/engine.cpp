@@ -91,17 +91,19 @@ void update_and_render(EngineMemory* memory, EngineInput* app_input) {
     state->pointer.y = 200;
     state->input_mode = InputMode::Game;
 
-    state->models.init(state->permanent, 5);
+    state->models.init(state->permanent, 6);
     state->models[0].id = 1;
     state->models[1].id = 2;
     state->models[2].id = 3;
     state->models[3].id = 4;
     state->models[4].id = 5;
+    state->models[5].id = 6;
     import_model("assets/meshes/dungeon.fbx_Wall1/dungeon.fbx_Wall1.fbx", state->models[0], state->permanent);
     import_model("assets/meshes/dungeon.fbx_Wall2/dungeon.fbx_Wall2.fbx", state->models[1], state->permanent);
     import_model("assets/meshes/dungeon.fbx_Wall3/dungeon.fbx_Wall3.fbx", state->models[2], state->permanent);
     import_model("assets/meshes/dungeon.fbx_Wall4/dungeon.fbx_Wall4.fbx", state->models[3], state->permanent);
     import_model("assets/meshes/dungeon.fbx_Doorway/dungeon.fbx_Doorway.fbx", state->models[4], state->permanent);
+    import_model("assets/meshes/dungeon.fbx_Floors/dungeon.fbx_Floors.fbx", state->models[5], state->permanent);
 
     state->floor.num_vertices = 4;
     state->floor.vertices = allocate<vec3>(state->permanent, 4);
@@ -270,6 +272,13 @@ void update_and_render(EngineMemory* memory, EngineInput* app_input) {
       auto* last_entity = state->entities.last();
       auto new_id = last_entity ? last_entity->id + 1 : 1;
       auto entity = Entity{ .id = new_id, .model = &state->models[3], .transform = Transform() };
+      state->entities.push(entity);
+    }
+
+    if (im::button(GEN_GUI_ID, "Floor")) {
+      auto* last_entity = state->entities.last();
+      auto new_id = last_entity ? last_entity->id + 1 : 1;
+      auto entity = Entity{ .id = new_id, .model = &state->models[5], .transform = Transform() };
       state->entities.push(entity);
     }
     im::window_end();
