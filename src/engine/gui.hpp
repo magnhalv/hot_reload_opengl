@@ -5,6 +5,13 @@
 #include "math/vec4.h"
 #include "text_renderer.h"
 
+/*
+ * TODO:
+ *  - Refactor to use glDrawElementsInstanced to reduce data.
+ *    E.g. for text, the quad shape does not change, only position
+ *    and uv-coords.
+*/
+
 // Source: https://solhsa.com/imgui/ch04.html
 // If you're going to render widgets to the same
 // UI from different source files, you can avoid

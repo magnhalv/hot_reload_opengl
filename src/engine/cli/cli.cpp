@@ -37,7 +37,7 @@ auto Cli::handle_input(UserInput* input) -> void {
       m_command_buffer.push(" ");
     } 
     else if (input->enter.is_pressed_this_frame()) {
-      FStr command = FStr::create(m_command_buffer.data(), *m_permanent_arena);
+      FStr command = FStr::create(m_command_buffer.data(), *g_transient);
       execute_command(command);
       if (m_command_buffer.len() > num_start_characters) {
         m_command_buffer.pop(m_command_buffer.len() - num_start_characters);
@@ -48,6 +48,46 @@ auto Cli::handle_input(UserInput* input) -> void {
   if (input->back.is_pressed_this_frame()) {
     if (m_command_buffer.len() > num_start_characters) {
       m_command_buffer.pop();
+    }
+  }
+
+  if (input->tab.is_pressed_this_frame()) {
+    FStr command = FStr::create(m_command_buffer, *g_transient);
+    auto split_command = split(command, ' ', *g_transient);
+    if (split_command.size() == 1) {
+      for (auto& app : m_apps) {
+        m_response_buffer.add(app.name);
+      }
+    }
+    else if (split_command.size() == 2) {
+      auto num_candidates = 0;
+      List<FStr*> candidates;
+      candidates.init(*g_transient, m_apps.size());
+      for (auto& app : m_apps) {
+        if (is_substr(app.name, split_command[1])) {
+          candidates.push(&app.name);
+        }
+      }
+
+      if (candidates.size() == 1) {
+        m_command_buffer.pop(split_command[1].len());
+        m_command_buffer.push(candidates[0]->data());
+        m_command_buffer.push(" ");
+      }
+      else {
+        for (auto &candidate : candidates) {
+          m_response_buffer.add(*candidate);
+        }
+      }
+
+    }
+    else {
+      for (auto app : m_apps) {
+        if (split_command[1] == app.name) {
+          auto command_wo_app_name = split_command.size() > 2 ? span(split_command, 2) : Array<FStr>();
+          app.autocomplete(command_wo_app_name, m_response_buffer);
+        }
+      }
     }
   }
 }
@@ -62,15 +102,14 @@ auto Cli::init(MemoryArena* arena) -> void {
   m_response_buffer.init(128 * 512, *arena);
 
   // region Init commands
-  _apps.init(*arena, 5);
-  register_echo(_apps, *arena);
-  register_graphics(_apps, *arena);
+  m_apps.init(*arena, 5);
+  hm::cli::options::reg(m_apps, *arena);
+  hm::cli::echo::reg(m_apps, *arena);
 
   m_background = vec4(0.0f, 0.165f, 0.22f, 0.9f);
 }
 
 auto Cli::toggle() -> bool {
-
   m_active = -m_active;
   return m_active == 1;
 }
@@ -109,16 +148,14 @@ auto Cli::update(i32 client_width, i32 client_height, f32 dt) -> void {
   const f32 y_inner_margin = 5;
   const f32 y_command_start = m_current_y + y_inner_margin;
 
-  auto lines_in_buffer = m_response_buffer.list.size();
-  auto line_index_start = lines_in_buffer > _sizes.max_num_lines ? (lines_in_buffer - _sizes.max_num_lines) : 0;
+  auto res_buf_size = m_response_buffer.list.size();
+  auto num_lines_to_draw = hm::min(res_buf_size, _sizes.max_num_lines);
   vec4 color{ 1.0, 1.0, 1.0, 1.0 };
   if (_sizes.max_num_lines > 0) {
-    auto line_nr = 1;
-    for (auto i = line_index_start; i < lines_in_buffer; i++) {
-      auto& line = m_response_buffer.list[i];
-      auto y_line_start = y_command_start + _sizes.line_height * line_nr;
+    for (auto i = 0; i < num_lines_to_draw; i++) {
+      auto& line = m_response_buffer.list[res_buf_size-1-i];
+      auto y_line_start = y_command_start + _sizes.line_height * (i+1);
       im::text(line.data(), x_inner_margin, y_line_start, color, _sizes.scale);
-      line_nr++;
     }
   }
   im::text(m_command_buffer.data(), x_inner_margin, y_command_start, color, _sizes.scale);
@@ -128,7 +165,7 @@ auto Cli::update(i32 client_width, i32 client_height, f32 dt) -> void {
 auto Cli::execute_command(FStr& command) -> void {
   m_response_buffer.add(command);
   auto split_command = split(command, ' ', *g_transient);
-  for (auto app : _apps) {
+  for (auto app : m_apps) {
     if (split_command[1] == app.name) {
       auto command_wo_app_name = split_command.size() > 2 ? span(split_command, 2) : Array<FStr>();
       app.handle(command_wo_app_name, m_response_buffer);

@@ -5,6 +5,7 @@
 #include <cstring>
 #include <platform/types.h>
 
+#include "growable_string.h"
 #include "memory_arena.h"
 
 /// @brief FixedString
@@ -12,6 +13,10 @@ struct FStr {
   [[nodiscard]] static auto create(const char* s, MemoryArena& arena) -> FStr {
     auto length = strlen(s);
     return FStr::create(s, length, arena);
+  }
+
+  [[nodiscard]] static auto create(GStr &g_str, MemoryArena& arena) -> FStr {
+    return FStr::create(g_str.data(), g_str.len(), arena);
   }
 
   [[nodiscard]] static auto create(const char* s, u32 length, MemoryArena& arena) -> FStr {
@@ -86,7 +91,14 @@ struct FStr {
   u32 _length;
 };
 
-auto inline split(FStr str, char delimiter, MemoryArena& arena) -> Array<FStr>& {
+auto inline is_substr(FStr &str, FStr &sub_str) -> bool {
+  if (sub_str.len() > str.len()) {
+    return false;
+  }
+  return strncmp(str.data(), sub_str.data(), sub_str.len()) == 0;
+}
+
+auto inline split(FStr &str, char delimiter, MemoryArena& arena) -> Array<FStr>& {
   i32 num_entries = 0;
   bool has_non_delimiter_values;
   // "" -> 0
@@ -99,8 +111,9 @@ auto inline split(FStr str, char delimiter, MemoryArena& arena) -> Array<FStr>& 
     if (str[i] != delimiter && num_entries == 0) {
       num_entries = 1;
     }
+
     if (str[i] == delimiter) {
-      if ((i < str.len() - 2) && str[i + 1] != delimiter) {
+      if ((i < str.len() - 1) && str[i + 1] != delimiter) {
         num_entries++;
       }
     }

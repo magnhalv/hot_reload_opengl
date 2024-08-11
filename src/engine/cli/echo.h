@@ -3,7 +3,8 @@
 #include "../list.h"
 #include "cli_app.h"
 
-auto inline handle_echo(Array<FStr>& args, LinkedListBuffer& buf) -> void {
+namespace hm::cli::echo {
+auto inline handle(Array<FStr>& args, LinkedListBuffer& buf) -> void {
   if (args.size() != 1) {
     buf.add("Echo only accepts a single argument.");
     return;
@@ -12,7 +13,17 @@ auto inline handle_echo(Array<FStr>& args, LinkedListBuffer& buf) -> void {
   }
 }
 
-auto inline register_echo(List<CliApp>& apps, MemoryArena& arena) -> void {
-  CliApp echo{ .name = FStr::create("echo", arena), .handle = &handle_echo };
+auto inline handle_autocomplete(Array<FStr>& args, LinkedListBuffer& buf) -> void {
+  return;
+}
+
+auto inline reg(List<CliApp>& apps, MemoryArena& arena) -> void {
+  CliApp echo{ 
+    .name = FStr::create("echo", arena), 
+    .handle = &handle,
+    .autocomplete = &handle_autocomplete
+  };
   apps.push(echo);
+}
+
 }

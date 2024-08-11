@@ -476,8 +476,8 @@ void update_and_render(EngineMemory* memory, EngineInput* app_input) {
 
     // TODO: Remove 1024, im::gui needs to decide this
     // Allocate buffers
-    vao.set_element_buffer(sizeof(i32) * 1024);
-    auto total_size = 1024 * sizeof(im::DrawVert);
+    vao.set_element_buffer(sizeof(i32) * 4* 1024);
+    auto total_size = 4*1024 * sizeof(im::DrawVert);
     auto stride = sizeof(im::DrawVert);
     vao.add_buffer(0, total_size, stride);
     vao.add_buffer_desc(0, 0, 2, offsetof(im::DrawVert, position), stride);

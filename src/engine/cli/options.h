@@ -4,6 +4,7 @@
 #include "../options.hpp"
 #include "cli_app.h"
 
+namespace hm::cli::options {
 auto inline handle_options(Array<FStr>& args, LinkedListBuffer& buf) -> void {
   const char* help_message = "options [antialias, grid] on|off";
   if (args.size() != 2) {
@@ -34,7 +35,21 @@ auto inline handle_options(Array<FStr>& args, LinkedListBuffer& buf) -> void {
   save_to_file(graphics_options);
 }
 
-auto inline register_graphics(List<CliApp>& apps, MemoryArena& arena) -> void {
-  CliApp echo{ .name = FStr::create("options", arena), .handle = &handle_options };
-  apps.push(echo);
+auto inline handle_autocomplete(Array<FStr>& args, LinkedListBuffer& buf) -> void {
+  if (args.size() == 0) {
+    buf.add("antialias");
+    buf.add("grid");
+  }
+  // TODO: Must manipulate command string
+}
+
+auto inline reg(List<CliApp>& apps, MemoryArena& arena) -> void {
+  CliApp options{ 
+    .name = FStr::create("options", arena), 
+    .handle = &handle_options , 
+    .autocomplete = &handle_autocomplete
+  };
+  apps.push(options);
+}
+
 }

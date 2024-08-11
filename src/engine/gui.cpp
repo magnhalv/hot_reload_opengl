@@ -43,7 +43,7 @@ auto initialize_imgui(Font* font, MemoryArena* permanent) -> void {
   layers.init(*gui_permanent, NUM_LAYERS);
   for (auto& layer : layers) {
     layer.vertices.init(*permanent, 4*1024);
-    layer.indices.init(*permanent, 4*1023);
+    layer.indices.init(*permanent, 4*1024);
   }
   g_current_layer_idx = 0;
   m_state.hot_item = None_Hot_Items_id;

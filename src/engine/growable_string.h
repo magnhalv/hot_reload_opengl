@@ -31,7 +31,6 @@ struct GStr {
 
   auto inline push(const char* s) {
     auto length = strlen(s);
-    printf("Length: %zu\n", length);
     if (length + m_length > m_max_length) {
       crash_and_burn("Exceeded max length of GStr");
     }

@@ -526,6 +526,9 @@ void win32_process_pending_messages(HWND hwnd, bool& is_running, UserInput& new_
         if (vk_code == VK_RETURN) {
           win32_process_keyboard_message(new_input.enter, is_down);
         }
+        if (vk_code == VK_TAB) {
+          win32_process_keyboard_message(new_input.tab, is_down);
+        }
 
         if (vk_code == VK_UP) {
         }

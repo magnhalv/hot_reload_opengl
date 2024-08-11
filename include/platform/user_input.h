@@ -34,7 +34,7 @@ struct MouseRaw {
     };
 };
 
-const i32 NUM_BUTTONS = 34;
+const i32 NUM_BUTTONS = 35;
 
 struct UserInput {
     MouseRaw mouse_raw; // mutated by platform
@@ -71,6 +71,7 @@ struct UserInput {
 
             ButtonState back;
             ButtonState enter;
+            ButtonState tab;
 
             ButtonState move_up;
             ButtonState move_down;

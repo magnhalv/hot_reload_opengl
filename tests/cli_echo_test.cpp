@@ -13,7 +13,7 @@ TEST_CASE_FIXTURE(TransientFixture, "echo: too many arguments") {
   args[1] = FStr::create("Test2", local);
   LinkedListBuffer llb;
   llb.init(512, local);
-  handle_echo(args, llb);
+  hm::cli::echo::handle(args, llb);
   REQUIRE_EQ(llb.list[0], "Echo only accepts a single argument.");
 }
 
@@ -23,6 +23,6 @@ TEST_CASE_FIXTURE(TransientFixture, "echo: happy path") {
   args[0] = FStr::create("Test", local);
   LinkedListBuffer llb;
   llb.init(512, local);
-  handle_echo(args, llb);
+  hm::cli::echo::handle(args, llb);
   REQUIRE_EQ(llb.list[0], "Test");
 }
