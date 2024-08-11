@@ -1,7 +1,11 @@
 #pragma once
 
 #include <cassert>
+#include <cstdio>
+#include <ostream>
+
 #include <platform/types.h>
+
 #include "math/vec3.h"
 #include "math/vec2.h"
 #include "memory_arena.h"
@@ -31,7 +35,7 @@ struct Array {
     }
 
     T &operator[](size_t index) {
-        assert(index < _size);
+        //HM_ASSERT(index < _size);
         return _data[index];
     }
 

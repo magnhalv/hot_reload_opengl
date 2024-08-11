@@ -4,6 +4,7 @@
 #include <glad/gl.h>
 
 #include <math/vec3.h>
+#include <math/math.h>
 
 #include "array.h"
 #include "asset_import.h"
@@ -32,8 +33,8 @@ auto Pointer::update_pos(const MouseRaw& raw, i32 client_width, i32 client_heigh
   const f32 dx = static_cast<f32>(raw.dx) * sensitivity;
   const f32 dy = static_cast<f32>(raw.dy) * sensitivity;
 
-  x = min(max(dx + x, 0.0f), static_cast<f32>(client_width));
-  y = min(max(dy + y, 0.0f), static_cast<f32>(client_height));
+  x = std::min(std::max(dx + x, 0.0f), static_cast<f32>(client_width));
+  y = std::min(std::max(dy + y, 0.0f), static_cast<f32>(client_height));
 }
 
 auto Pointer::update_ray(const mat4& view, const mat4& inv_projection, i32 client_width, i32 client_height) -> void {
@@ -185,7 +186,7 @@ void update_and_render(EngineMemory* memory, EngineInput* app_input) {
     auto cli_memory_arena = state->permanent.allocate_arena(MegaBytes(1));
     state->font = font_load("assets/fonts/ubuntu/Ubuntu-Regular.ttf", state->permanent);
     state->text_renderer.init(&font_program);
-    state->cli.init(&single_color_program, &state->text_renderer, state->font, cli_memory_arena);
+    state->cli.init(cli_memory_arena);
 
     im::initialize_imgui(state->font, &state->permanent);
     state->is_initialized = true;
@@ -215,27 +216,26 @@ void update_and_render(EngineMemory* memory, EngineInput* app_input) {
   auto ortho_projection = create_ortho(0, app_input->client_width, 0, app_input->client_height, 0.0f, 100.0f);
   const auto inv_projection = inverse(projection);
   const auto view = state->camera.get_view();
-  const f32 c_width = static_cast<f32>(app_input->client_width);
-  const f32 c_height = static_cast<f32>(app_input->client_height);
 
   Pointer* pointer = &state->pointer;
   const MouseRaw* mouse = &app_input->input.mouse_raw;
 
-  // Update CLI
-  {
-    // TODO: Need to rewrite CLI to use imgui
-    if (app_input->input.oem_5.is_pressed_this_frame()) {
-      state->is_cli_active = state->cli.toggle(c_height);
-    }
-    state->cli.handle_input(&app_input->input);
-    state->cli.update(c_width, c_height, time.dt);
-  }
 
   // Update GUI
   if (state->pointer_mode == PointerMode::NORMAL) {
     im::new_frame(pointer->x, pointer->y, app_input->input.mouse_raw.left.ended_down, &ortho_projection);
   } else {
     im::new_frame(-1, -1, false, &ortho_projection);
+  }
+
+  // Update CLI
+  {
+    // TODO: Need to rewrite CLI to use imgui
+    if (app_input->input.oem_5.is_pressed_this_frame()) {
+      state->is_cli_active = state->cli.toggle();
+    }
+    state->cli.handle_input(&app_input->input);
+    state->cli.update(app_input->client_width, app_input->client_height, time.dt);
   }
 
   {
@@ -435,11 +435,6 @@ void update_and_render(EngineMemory* memory, EngineInput* app_input) {
     disable_stencil_test();
   }
 
-  {
-    state->cli.render_background(c_width, c_height);
-    state->cli.render_text(c_width, c_height);
-  }
-
   // endregion
 
   // endregion
@@ -463,7 +458,7 @@ void update_and_render(EngineMemory* memory, EngineInput* app_input) {
   }
   // endregion
 
-  // region RenderUI
+  // region RenderGUI
   {
     gl->enable(GL_BLEND);
     gl->disable(GL_DEPTH_TEST);
@@ -490,10 +485,16 @@ void update_and_render(EngineMemory* memory, EngineInput* app_input) {
     vao.add_buffer_desc(0, 2, 4, offsetof(im::DrawVert, color), stride);
     vao.upload_buffer_desc();
 
+    auto i = 0;
     for (auto& layer : layers) {
+      /*if (i > 3) {*/
+      /*  printf("Vertices:\n");*/
+      /*  layer.vertices.data()[0].print();*/
+      /*}*/
       vao.upload_element_buffer_data(layer.indices.data(), sizeof(i32) * layer.indices.size());
       vao.upload_buffer_data(0, layer.vertices.data(), 0, sizeof(im::DrawVert) * layer.vertices.size());
       gl->draw_elements(GL_TRIANGLES, layer.indices.size(), GL_UNSIGNED_INT, 0);
+      i++;
     }
 
     vao.destroy();

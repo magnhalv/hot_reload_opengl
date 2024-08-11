@@ -4,6 +4,7 @@
 #include <cfloat>
 #include <cinttypes>
 #include <cstdint>
+#include <cstdio>
 #include <type_traits>
 
 using i8 = int8_t;

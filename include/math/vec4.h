@@ -2,6 +2,7 @@
 #define H_VEC4
 
 #include <platform/types.h>
+#include <iostream>
 
 template<typename T>
 struct TVec4 {
@@ -19,6 +20,10 @@ struct TVec4 {
 		x(_x), y(_y), z(_z), w(_w) { }
 	inline explicit TVec4<T>(T* fv) :
 		x(fv[0]), y(fv[1]), z(fv[2]), w(fv[3]) { }
+
+  auto print() {
+    std::cout << "x: " << x << ", y: " << y << ", z: " << z << ", w:" << w << std::endl;
+  }
 };
 
 typedef TVec4<f32> vec4;

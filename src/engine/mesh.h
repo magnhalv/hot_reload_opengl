@@ -42,16 +42,16 @@ struct Mesh {
     result.max_z = vertices[0].z;
     for (i32 i = 0; i < num_vertices; i++) {
       f32 x = vertices[i].x;
-      result.min_x = min(x, result.min_x);
-      result.max_x = max(x, result.max_x);
+      result.min_x = hm::min(x, result.min_x);
+      result.max_x = hm::max(x, result.max_x);
 
       f32 y = vertices[i].y;
-      result.min_y = min(y, result.min_y);
-      result.max_y = max(y, result.max_y);
+      result.min_y = hm::min(y, result.min_y);
+      result.max_y = hm::max(y, result.max_y);
 
       f32 z = vertices[i].z;
-      result.min_z = min(z, result.min_z);
-      result.max_z = max(z, result.max_z);
+      result.min_z = hm::min(z, result.min_z);
+      result.max_z = hm::max(z, result.max_z);
     }
     return result;
   }

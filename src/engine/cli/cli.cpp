@@ -1,6 +1,7 @@
 #include "cli.h"
 #include <math/vec2.h>
 
+#include "../gui.hpp"
 #include "echo.h"
 #include "options.h"
 
@@ -16,11 +17,11 @@ auto cubic_bezier(vec2 p0, vec2 p1, vec2 p2, vec2 p3, f32 t) -> vec2 {
 }
 
 auto Cli::handle_input(UserInput* input) -> void {
-  if (m_active != -1) {
+  if (m_active == -1) {
     return;
   }
 
-  if (!_command_buffer.is_full()) {
+  if (!m_command_buffer.is_full()) {
     for (u8 i = 0; i < 26; i++) {
       auto button = input->buttons[i];
 
@@ -28,66 +29,58 @@ auto Cli::handle_input(UserInput* input) -> void {
         char character[2];
         character[0] = i + 97;
         character[1] = '\0';
-        _command_buffer.push(character);
+        m_command_buffer.push(character);
       }
     }
 
     if (input->space.is_pressed_this_frame()) {
-      _command_buffer.push(" ");
-    } else if (input->enter.is_pressed_this_frame()) {
-      FStr command = FStr::create(_command_buffer.data(), *_arena);
+      m_command_buffer.push(" ");
+    } 
+    else if (input->enter.is_pressed_this_frame()) {
+      FStr command = FStr::create(m_command_buffer.data(), *m_permanent_arena);
       execute_command(command);
-      if (_command_buffer.len() > num_start_characters) {
-        _command_buffer.pop(_command_buffer.len() - num_start_characters);
+      if (m_command_buffer.len() > num_start_characters) {
+        m_command_buffer.pop(m_command_buffer.len() - num_start_characters);
       }
-    } else if (input->back.is_pressed_this_frame() && _command_buffer.len() > 2) {
-      _command_buffer.pop();
-    }
+    }   
   }
 
   if (input->back.is_pressed_this_frame()) {
-    if (_command_buffer.len() > num_start_characters) {
-      _command_buffer.pop();
+    if (m_command_buffer.len() > num_start_characters) {
+      m_command_buffer.pop();
     }
   }
 }
 
-auto Cli::init(GLShaderProgram* single_color, TextRenderer* text_renderer, Font* font, MemoryArena* arena) -> void {
-  _vao.init();
-  _vao.bind();
-  _vao.add_buffer(0, 2 * 6 * sizeof(f32), 2 * sizeof(f32));
-  _vao.add_buffer_desc(0, 0, 2, 0, 2 * sizeof(f32));
-  _vao.upload_buffer_desc();
+auto Cli::init(MemoryArena* arena) -> void {
+  m_active = 1;
 
-  _single_color_program = single_color;
-  m_active = -1;
 
-  _arena = arena;
-  _command_buffer = GStr::create("> ", 128, *arena);
+  m_permanent_arena = arena;
+  m_command_buffer = GStr::create("> ", 128, *arena);
 
-  _response_buffer.init(128 * 512, *arena);
+  m_response_buffer.init(128 * 512, *arena);
 
   // region Init commands
   _apps.init(*arena, 5);
   register_echo(_apps, *arena);
   register_graphics(_apps, *arena);
 
-  assert(text_renderer != nullptr);
-  _text_renderer = text_renderer;
-  _font = font;
+  m_background = vec4(0.0f, 0.165f, 0.22f, 0.9f);
 }
 
-auto Cli::toggle(f32 client_height) -> bool {
-  _target_y = client_height / 2;
+auto Cli::toggle() -> bool {
 
   m_active = -m_active;
   return m_active == 1;
 }
 
-auto Cli::update(f32 client_width, f32 client_height, f32 dt) -> void {
+auto Cli::update(i32 client_width, i32 client_height, f32 dt) -> void {
 #if ENGINE_DEBUG
-  _arena->check_integrity();
+  m_permanent_arena->check_integrity();
 #endif
+
+  _sizes.line_height = im::get_font_max_height() + _sizes.line_margin;
 
   auto delta_progress = dt / Duration;
   _progress += delta_progress * m_active;
@@ -95,8 +88,7 @@ auto Cli::update(f32 client_width, f32 client_height, f32 dt) -> void {
   if (_progress > 1.0) {
     _progress = 1.0;
   }
-
-  if (_progress < 0) {
+  else if (_progress < 0) {
     _progress = 0;
   }
 
@@ -106,69 +98,43 @@ auto Cli::update(f32 client_width, f32 client_height, f32 dt) -> void {
   vec2 p3 = { 1, 1 };
 
   auto bezier = cubic_bezier(p0, p1, p2, p3, _progress).x;
-  _current_y = client_height - _target_y * bezier;
-  _current_height = client_height - _current_y;
+  m_current_y = client_height - (client_height / 2.0f) * bezier;
 
-  _sizes.update(client_width, _current_height);
-}
+  _sizes.update(client_width, m_current_y);
 
-auto Cli::render_background(f32 client_width, f32 client_height) -> void {
-  _vao.bind();
-  gl->enable(GL_BLEND);
-  gl->blend_func(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-  _single_color_program->useProgram();
-  _single_color_program->set_uniform("color", vec4(0.0f, 0.165f, 0.22f, 0.9f));
+  im::set_to_top_layer();
+  im::rectangle(GEN_GUI_ID, 0, m_current_y, client_width, client_height, m_background);
 
-  f32 cursor_vertices[] = {
-    0.0f,
-    _current_y,
-    client_width,
-    client_height,
-    0.0f,
-    client_height,
+  const f32 x_inner_margin = 20;
+  const f32 y_inner_margin = 5;
+  const f32 y_command_start = m_current_y + y_inner_margin;
 
-    0.0f,
-    _current_y,
-    client_width,
-    client_height,
-    client_width,
-    _current_y,
-  };
-  _vao.upload_buffer_data(0, cursor_vertices, 0, sizeof(cursor_vertices));
-  gl->draw_arrays(GL_TRIANGLES, 0, 6);
-  gl->disable(GL_BLEND);
-}
-
-auto Cli::render_text(f32 client_width, f32 client_height) -> void {
-  const f32 padding = 20;
-  auto ortho = create_ortho(0, client_width, 0, client_height, 0.0f, 100.0f);
-  f32 line_x = padding;
-  f32 line_y = client_height - (client_height - _current_y) + padding;
-  _text_renderer->render(_command_buffer.data(), *_font, line_x, line_y, _sizes.scale, ortho);
-
-  auto line_nr = 1;
-  auto offset = _target_y - _current_y;
-  auto resp_size = _response_buffer.list.size();
-  auto line_index_start = resp_size > _sizes.max_num_lines ? (resp_size - _sizes.max_num_lines) : 0;
+  auto lines_in_buffer = m_response_buffer.list.size();
+  auto line_index_start = lines_in_buffer > _sizes.max_num_lines ? (lines_in_buffer - _sizes.max_num_lines) : 0;
+  vec4 color{ 1.0, 1.0, 1.0, 1.0 };
   if (_sizes.max_num_lines > 0) {
-    for (auto i = line_index_start; i < resp_size; i++) {
-      auto& line = _response_buffer.list[i];
-      _text_renderer->render(line.data(), *_font, line_x, client_height - offset - _sizes.line_height * line_nr, _sizes.scale, ortho);
+    auto line_nr = 1;
+    for (auto i = line_index_start; i < lines_in_buffer; i++) {
+      auto& line = m_response_buffer.list[i];
+      auto y_line_start = y_command_start + _sizes.line_height * line_nr;
+      im::text(line.data(), x_inner_margin, y_line_start, color, _sizes.scale);
       line_nr++;
     }
   }
+  im::text(m_command_buffer.data(), x_inner_margin, y_command_start, color, _sizes.scale);
+  im::reset_layer();
 }
 
 auto Cli::execute_command(FStr& command) -> void {
-  _response_buffer.add(command);
+  m_response_buffer.add(command);
   auto split_command = split(command, ' ', *g_transient);
   for (auto app : _apps) {
     if (split_command[1] == app.name) {
       auto command_wo_app_name = split_command.size() > 2 ? span(split_command, 2) : Array<FStr>();
-      app.handle(command_wo_app_name, _response_buffer);
+      app.handle(command_wo_app_name, m_response_buffer);
       return;
     }
   }
 
-  _response_buffer.add("  Command not found");
+  m_response_buffer.add("  Command not found");
 }

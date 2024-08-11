@@ -15,58 +15,60 @@ struct GStr {
     memcpy(data, s, length);
     data[length] = '\0';
 
-    return GStr{ ._data = data, ._curr_length = static_cast<i32>(length), ._max_length = max_length };
+    return GStr{ .m_data = data, .m_length = static_cast<i32>(length), .m_max_length = max_length };
   }
 
   [[nodiscard]] inline auto data() const -> const char* {
-    return _data;
+    return m_data;
   }
 
   [[nodiscard]] auto substring(i32 start, i32 length, MemoryArena& arena) const -> GStr {
     assert(start >= 0);
     assert(length >= 0);
     assert(start + length <= len());
-    return GStr::create(&_data[start], length, arena);
+    return GStr::create(&m_data[start], length, arena);
   }
 
   auto inline push(const char* s) {
     auto length = strlen(s);
-    if (length + _curr_length > _max_length) {
+    printf("Length: %zu\n", length);
+    if (length + m_length > m_max_length) {
       crash_and_burn("Exceeded max length of GStr");
     }
-    memcpy(_data + _curr_length, s, length);
-    _curr_length += length;
-    _data[_curr_length] = '\0';
+    memcpy(m_data + m_length, s, length);
+    m_length += length;
+    m_data[m_length] = '\0';
   }
 
   auto inline pop(i32 num = 1) {
-    if (_curr_length - num < 0) {
-      _curr_length = 0;
+    if (m_length - num < 0) {
+      m_length = 0;
     } else {
-      _curr_length -= num;
+      m_length -= num;
     }
-    _data[_curr_length] = '\0';
+    printf("Length: %d\n", m_length);
+    m_data[m_length] = '\0';
   }
 
   const char& operator[](size_t index) const {
-    assert(index < _curr_length);
-    return _data[index];
+    assert(index < m_length);
+    return m_data[index];
   }
 
   bool operator==(const GStr other) const {
-    if (_curr_length != other.len()) {
+    if (m_length != other.len()) {
       return false;
     }
-    return memcmp(_data, other._data, _curr_length) == 0;
+    return memcmp(m_data, other.m_data, m_length) == 0;
   }
 
   bool operator==(const char* other) const {
     auto other_len = strlen(other);
-    if (_curr_length != other_len) {
+    if (m_length != other_len) {
       return false;
     }
-    for (auto i = 0; i < _curr_length; i++) {
-      if (_data[i] != other[i]) {
+    for (auto i = 0; i < m_length; i++) {
+      if (m_data[i] != other[i]) {
         return false;
       }
     }
@@ -74,14 +76,14 @@ struct GStr {
   }
 
   [[nodiscard]] inline auto len() const -> u32 {
-    return _curr_length;
+    return m_length;
   }
 
   [[nodiscard]] inline auto is_full() const -> u32 {
-    return _curr_length == _max_length;
+    return m_length == m_max_length;
   }
 
-  char* _data;
-  i32 _curr_length;
-  i32 _max_length;
+  char* m_data;
+  i32 m_length;
+  i32 m_max_length;
 };

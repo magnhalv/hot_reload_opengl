@@ -1,3 +1,5 @@
+#include <cmath>
+
 #include <math/transform.h>
 
 Transform combine(const Transform& a, const Transform& b) {

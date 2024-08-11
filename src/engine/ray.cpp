@@ -44,8 +44,8 @@ bool intersects(const vec3& ray, const vec3& ray_origin, const BBox& bbox, vec2&
   vec2 y = intersections_on_axis(ray_origin.y, ray.y, bbox.min_y, bbox.max_y);
   vec2 z = intersections_on_axis(ray_origin.z, ray.z, bbox.min_z, bbox.max_z);
 
-  f32 tmin = max(max(x.v[0], y.v[0]), z.v[0]);
-  f32 tmax = min(min(x.v[1], y.v[1]), z.v[1]);
+  f32 tmin = hm::max(hm::max(x.v[0], y.v[0]), z.v[0]);
+  f32 tmax = hm::min(hm::min(x.v[1], y.v[1]), z.v[1]);
 
   if (std::isinf(tmin) || std::isinf(tmax)) {
     return false;
@@ -65,8 +65,8 @@ bool intersects(const vec3& ray, const vec3& ray_origin, const BBox& bbox) {
   vec2 y = intersections_on_axis(ray_origin.y, ray.y, bbox.min_y, bbox.max_y);
   vec2 z = intersections_on_axis(ray_origin.z, ray.z, bbox.min_z, bbox.max_z);
 
-  f32 tmin = max(max(x.v[0], y.v[0]), z.v[0]);
-  f32 tmax = min(min(x.v[1], y.v[1]), z.v[1]);
+  f32 tmin = hm::max(hm::max(x.v[0], y.v[0]), z.v[0]);
+  f32 tmax = hm::min(hm::min(x.v[1], y.v[1]), z.v[1]);
 
   return tmin <= tmax;
 }

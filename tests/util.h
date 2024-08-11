@@ -1,11 +1,12 @@
 #pragma once
 
-#include "doctest.h"
-#include "logger.h"
-#include <cstring>
-#include <memory_arena.h>
-
 #include <csetjmp>
+#include <cstdlib>
+#include <cstring>
+
+#include "doctest.h"
+
+#include <memory_arena.h>
 
 const size_t default_size = 1024;
 

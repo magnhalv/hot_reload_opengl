@@ -1,6 +1,7 @@
 #ifndef VEC2_H
 #define VEC2_H
 
+#include <iostream>
 #include <platform/types.h>
 
 template <typename T> struct TVec2 {
@@ -16,6 +17,10 @@ template <typename T> struct TVec2 {
   inline TVec2(T _x, T _y) : x(_x), y(_y) {
   }
   inline TVec2(T* fv) : x(fv[0]), y(fv[1]) {
+  }
+
+  auto print() -> void {
+    std::cout << "x: " << x << "y: " << y << std::endl;
   }
 };
 

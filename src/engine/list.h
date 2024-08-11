@@ -1,9 +1,11 @@
 #pragma once
 
+#include <cassert>
+
 #include "math/vec2.h"
 #include "math/vec3.h"
 #include "memory_arena.h"
-#include <cassert>
+#include "hm_assert.h"
 #include <platform/types.h>
 
 template <typename T> struct List {
@@ -55,12 +57,12 @@ template <typename T> struct List {
   }
 
   auto inline push(T* value) -> void {
-    assert(m_size < m_capacity);
+    HM_ASSERT(m_size < m_capacity);
     m_data[m_size++] = *value;
   }
 
   auto inline push(T value) -> void {
-    assert(m_size < m_capacity);
+    HM_ASSERT(m_size < m_capacity);
     m_data[m_size++] = value;
   }
 

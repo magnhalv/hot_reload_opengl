@@ -12,8 +12,10 @@ mat4* _ortho;
 MemoryArena* gui_permanent;
 MemoryArena* gui_transient;
 
-List<RenderLayer> layers;
-i32 current_layer_idx = 0;
+Array<RenderLayer> layers;
+i32 g_old_layer_idx = -1;
+i32 g_current_layer_idx = 0;
+const i32 TOP_LAYER = 5; // TODO: Replace this with different contexts, or something
 
 struct Window {
   i32 id;
@@ -27,26 +29,39 @@ struct Window {
 Window active_window;
 
 const f32 ui_scale = 0.6f;
+const i32 NUM_LAYERS = 8;
+
+auto is_in_rect(ivec2 pos, ivec2 start, ivec2 end) {
+  return pos.x >= start.x && pos.x < end.x && pos.y >= end.y && pos.y < start.y;
+}
 
 auto initialize_imgui(Font* font, MemoryArena* permanent) -> void {
   _font = font;
   gui_permanent = permanent->allocate_arena(MegaBytes(1));
   gui_transient = permanent->allocate_arena(MegaBytes(1));
 
-  layers.init(*gui_permanent, 5);
-  current_layer_idx = 0;
+  layers.init(*gui_permanent, NUM_LAYERS);
+  for (auto& layer : layers) {
+    layer.vertices.init(*permanent, 4*1024);
+    layer.indices.init(*permanent, 4*1023);
+  }
+  g_current_layer_idx = 0;
   m_state.hot_item = None_Hot_Items_id;
+}
+
+auto get_font_max_height() -> f32 {
+  return font_str_dim("A", 1.0, *_font).y;
 }
 
 auto new_frame(i32 mouse_x, i32 mouse_y, bool mouse_down, mat4* ortho) -> void {
   m_state.mouse_pos = ivec2(mouse_x, mouse_y);
   m_state.mouse_down = mouse_down;
 
-  layers.empty();
-  current_layer_idx = 0;
-  auto first_layer = layers.push();
-  first_layer->vertices.init(*gui_transient, 1024);
-  first_layer->indices.init(*gui_transient, 1024);
+  g_current_layer_idx = 0;
+  for (auto& layer : layers) {
+    layer.vertices.empty();
+    layer.indices.empty();
+  }
 
   active_window.id = 0;
 
@@ -60,10 +75,21 @@ auto end_frame() -> void {
 auto get_state() -> UIState {
   return m_state;
 }
-auto get_render_layers() -> List<RenderLayer> {
+auto get_render_layers() -> Array<RenderLayer> {
   return layers;
 }
 
+auto set_to_top_layer() -> void {
+  g_old_layer_idx = g_current_layer_idx;
+  g_current_layer_idx = TOP_LAYER;
+}
+
+auto reset_layer() -> void {
+  assert(g_current_layer_idx >= 0);
+  assert(g_current_layer_idx <= NUM_LAYERS);
+  g_current_layer_idx = g_old_layer_idx;
+  g_old_layer_idx = -1;
+}
 const vec4 background_color = vec4(0.133, 0.239, 0.365, 1.0);
 const vec4 active_color = vec4(0.233, 0.339, 0.465, 1.0);
 const vec4 hot_color = vec4(0.033, 0.139, 0.265, 1.0);
@@ -72,7 +98,7 @@ const vec4 hot_color = vec4(0.033, 0.139, 0.265, 1.0);
 auto render_text(const char* text, const Font& font, f32 x, f32 y, f32 scale, vec4 color, const mat4& ortho_projection) -> void {
   auto length = strlen(text);
   auto& characters = font.characters;
-  auto* layer = &layers[current_layer_idx];
+  auto* layer = &layers[g_current_layer_idx];
   for (auto i = 0; i < length; i++) {
     char c = text[i];
     if (c == '\0') {
@@ -86,7 +112,7 @@ auto render_text(const char* text, const Font& font, f32 x, f32 y, f32 scale, ve
 
     f32 w = ch.size.x * scale;
     f32 h = ch.size.y * scale;
-
+    // TODO: Cut off if they are outside of window
     auto index = layer->vertices.size();
     layer->vertices.push({ .position = vec2(x_pos, y_pos + h), .uv = vec2(ch.uv_start.x, ch.uv_start.y), .color = color }); // 1
     layer->vertices.push({ .position = vec2(x_pos, y_pos), .uv = vec2(ch.uv_start.x, ch.uv_end.y), .color = color }); // 2
@@ -112,11 +138,11 @@ auto text(const char* text, i32 x, i32 y, vec4& color, f32 scale) -> void {
   render_text(text, *_font, x, y, scale, color, *_ortho);
 }
 
-auto draw_rectangle(ivec2 start_in, ivec2 end_in, vec4 color) {
+auto draw_rectangle(ivec2 start_in, ivec2 end_in, const vec4& color) {
   vec2 start = ivec2_to_vec2(start_in);
   vec2 end = ivec2_to_vec2(end_in);
   auto uv = vec2(0.0, 0.0);
-  auto* current_layer = &layers[current_layer_idx];
+  auto* current_layer = &layers[g_current_layer_idx];
   auto first_index = current_layer->vertices.size();
   current_layer->vertices.push({ .position = start, .uv = uv, .color = color });
   current_layer->vertices.push({ .position = vec2(start.x, end.y), .uv = uv, .color = color });
@@ -132,12 +158,40 @@ auto draw_rectangle(ivec2 start_in, ivec2 end_in, vec4 color) {
   current_layer->indices.push(first_index + 2);
 }
 
-auto draw_rectangle(i32 x, i32 y, i32 width, i32 height, vec4 color) {
-  draw_rectangle(ivec2(x, y), ivec2(x + width, y - height), color);
+auto rectangle(i32 id, i32 start_x, i32 start_y, i32 end_x, i32 end_y, const vec4& color) -> bool {
+
+  ivec2 start = ivec2(start_x, start_y);
+  ivec2 end{ end_x, end_y };
+
+  if (is_in_rect(m_state.mouse_pos, start, end)) {
+
+    m_state.hot_item = id;
+
+    if (m_state.mouse_down) {
+      m_state.active_item = id;
+    }
+  } else if (m_state.hot_item == id) {
+    m_state.hot_item = None_Hot_Items_id;
+  }
+
+  bool was_clicked = !m_state.mouse_down && m_state.active_item == id;
+  if (was_clicked) {
+    m_state.active_item = None_Hot_Items_id;
+  }
+
+  if (m_state.active_item == id) {
+    // color = active_color;
+  } else if (m_state.hot_item == id) {
+    // color = hot_color;
+  }
+
+  draw_rectangle(start, end, color);
+
+  return was_clicked;
 }
 
-auto is_in_rect(ivec2 pos, ivec2 start, ivec2 end) {
-  return pos.x >= start.x && pos.x < end.x && pos.y >= end.y && pos.y < start.y;
+auto draw_rectangle(i32 x, i32 y, i32 width, i32 height, vec4 color) {
+  draw_rectangle(ivec2(x, y), ivec2(x + width, y - height), color);
 }
 
 auto button(i32 id, const char* text, i32 x, i32 y) -> bool {
@@ -186,7 +240,6 @@ auto button(i32 id, const char* text, i32 x, i32 y) -> bool {
   render_text(text, *_font, start.x + padding, start.y - padding - text_dim.y, ui_scale, text_color, *_ortho);
 
   return was_clicked;
-  // text_renderer.render(text, i32 length, f32 x, f32 y, f32 scale, const mat4 &ortho_projection)
 }
 
 auto window_begin(i32 id, const char* title, i32 x, i32 y) -> void {
@@ -199,18 +252,15 @@ auto window_begin(i32 id, const char* title, i32 x, i32 y) -> void {
   active_window.next_draw_point = active_window.content_start;
   active_window.content_end = active_window.content_start;
 
-  auto new_layer = layers.push();
-  new_layer->vertices.init(*gui_transient, 1024);
-  new_layer->indices.init(*gui_transient, 1024);
-  current_layer_idx++;
-  assert(current_layer_idx < 5);
+  g_current_layer_idx++;
+  assert(g_current_layer_idx < NUM_LAYERS);
 }
 
 auto window_end() -> void {
   const i32 padding_x = 15;
   const i32 padding_y = 15;
-  assert(current_layer_idx > 0);
-  current_layer_idx--;
+  assert(g_current_layer_idx > 0);
+  g_current_layer_idx--;
   active_window.content_end.x += padding_x;
   active_window.content_end.y -= padding_y;
   draw_rectangle(active_window.position, active_window.content_end, vec4(0.1, 0.1, 0.1, 0.8));
