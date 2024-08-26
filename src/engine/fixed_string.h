@@ -1,10 +1,10 @@
 #pragma once
 
-#include "array.h"
 #include <cassert>
 #include <cstring>
 #include <platform/types.h>
 
+#include "array.h"
 #include "growable_string.h"
 #include "memory_arena.h"
 
@@ -15,7 +15,7 @@ struct FStr {
     return FStr::create(s, length, arena);
   }
 
-  [[nodiscard]] static auto create(GStr &g_str, MemoryArena& arena) -> FStr {
+  [[nodiscard]] static auto create(GStr& g_str, MemoryArena& arena) -> FStr {
     return FStr::create(g_str.data(), g_str.len(), arena);
   }
 
@@ -91,14 +91,14 @@ struct FStr {
   u32 _length;
 };
 
-auto inline is_substr(FStr &str, FStr &sub_str) -> bool {
+auto inline is_substr(FStr& str, FStr& sub_str) -> bool {
   if (sub_str.len() > str.len()) {
     return false;
   }
   return strncmp(str.data(), sub_str.data(), sub_str.len()) == 0;
 }
 
-auto inline split(FStr &str, char delimiter, MemoryArena& arena) -> Array<FStr>& {
+auto inline split(FStr& str, char delimiter, MemoryArena& arena) -> Array<FStr>& {
   i32 num_entries = 0;
   bool has_non_delimiter_values;
   // "" -> 0

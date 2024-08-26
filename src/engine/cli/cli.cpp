@@ -1,4 +1,5 @@
 #include "cli.h"
+#include <cstdio>
 #include <math/vec2.h>
 
 #include "../gui.hpp"
@@ -35,14 +36,13 @@ auto Cli::handle_input(UserInput* input) -> void {
 
     if (input->space.is_pressed_this_frame()) {
       m_command_buffer.push(" ");
-    } 
-    else if (input->enter.is_pressed_this_frame()) {
+    } else if (input->enter.is_pressed_this_frame()) {
       FStr command = FStr::create(m_command_buffer.data(), *g_transient);
       execute_command(command);
       if (m_command_buffer.len() > num_start_characters) {
         m_command_buffer.pop(m_command_buffer.len() - num_start_characters);
       }
-    }   
+    }
   }
 
   if (input->back.is_pressed_this_frame()) {
@@ -58,8 +58,7 @@ auto Cli::handle_input(UserInput* input) -> void {
       for (auto& app : m_apps) {
         m_response_buffer.add(app.name);
       }
-    }
-    else if (split_command.size() == 2) {
+    } else if (split_command.size() == 2) {
       auto num_candidates = 0;
       List<FStr*> candidates;
       candidates.init(*g_transient, m_apps.size());
@@ -70,22 +69,23 @@ auto Cli::handle_input(UserInput* input) -> void {
       }
 
       if (candidates.size() == 1) {
+        if (m_command_buffer[m_command_buffer.len() - 1] == ' ') {
+          m_command_buffer.pop();
+        }
         m_command_buffer.pop(split_command[1].len());
         m_command_buffer.push(candidates[0]->data());
         m_command_buffer.push(" ");
-      }
-      else {
-        for (auto &candidate : candidates) {
+      } else {
+        for (auto& candidate : candidates) {
           m_response_buffer.add(*candidate);
         }
       }
 
-    }
-    else {
+    } else {
       for (auto app : m_apps) {
         if (split_command[1] == app.name) {
           auto command_wo_app_name = split_command.size() > 2 ? span(split_command, 2) : Array<FStr>();
-          app.autocomplete(command_wo_app_name, m_response_buffer);
+          // app.autocomplete(command_wo_app_name, m_response_buffer);
         }
       }
     }
@@ -94,7 +94,6 @@ auto Cli::handle_input(UserInput* input) -> void {
 
 auto Cli::init(MemoryArena* arena) -> void {
   m_active = 1;
-
 
   m_permanent_arena = arena;
   m_command_buffer = GStr::create("> ", 128, *arena);
@@ -126,8 +125,7 @@ auto Cli::update(i32 client_width, i32 client_height, f32 dt) -> void {
 
   if (_progress > 1.0) {
     _progress = 1.0;
-  }
-  else if (_progress < 0) {
+  } else if (_progress < 0) {
     _progress = 0;
   }
 
@@ -153,8 +151,8 @@ auto Cli::update(i32 client_width, i32 client_height, f32 dt) -> void {
   vec4 color{ 1.0, 1.0, 1.0, 1.0 };
   if (_sizes.max_num_lines > 0) {
     for (auto i = 0; i < num_lines_to_draw; i++) {
-      auto& line = m_response_buffer.list[res_buf_size-1-i];
-      auto y_line_start = y_command_start + _sizes.line_height * (i+1);
+      auto& line = m_response_buffer.list[res_buf_size - 1 - i];
+      auto y_line_start = y_command_start + _sizes.line_height * (i + 1);
       im::text(line.data(), x_inner_margin, y_line_start, color, _sizes.scale);
     }
   }
@@ -167,7 +165,7 @@ auto Cli::execute_command(FStr& command) -> void {
   auto split_command = split(command, ' ', *g_transient);
   for (auto app : m_apps) {
     if (split_command[1] == app.name) {
-      auto command_wo_app_name = split_command.size() > 2 ? span(split_command, 2) : Array<FStr>();
+      auto command_wo_app_name = split_command.size() > 0 ? span(split_command, 1) : Array<FStr>();
       app.handle(command_wo_app_name, m_response_buffer);
       return;
     }

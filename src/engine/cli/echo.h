@@ -13,17 +13,15 @@ auto inline handle(Array<FStr>& args, LinkedListBuffer& buf) -> void {
   }
 }
 
-auto inline handle_autocomplete(Array<FStr>& args, LinkedListBuffer& buf) -> void {
-  return;
+auto inline handle_autocomplete(Array<FStr>& args, LinkedListBuffer& buf, MemoryArena& arena) -> List<FStr> {
+  List<FStr> list;
+  list.init(arena, 0);
+  return list;
 }
 
 auto inline reg(List<CliApp>& apps, MemoryArena& arena) -> void {
-  CliApp echo{ 
-    .name = FStr::create("echo", arena), 
-    .handle = &handle,
-    .autocomplete = &handle_autocomplete
-  };
+  CliApp echo{ .name = FStr::create("echo", arena), .handle = &handle, .autocomplete = &handle_autocomplete };
   apps.push(echo);
 }
 
-}
+} // namespace hm::cli::echo
